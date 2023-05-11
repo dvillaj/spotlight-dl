@@ -21,7 +21,8 @@ RUN pipenv install --system --deploy
 # Copia todos los archivos del proyecto al directorio de trabajo de la imagen
 COPY . .
 
-RUN groupadd -g $PGID pythongroup && useradd -u $PUID -g $PGID -m pythonuser
+RUN groupadd -g $PGID pythongroup || true
+RUN useradd -u $PUID -g $PGID -m pythonuser
 RUN mkdir $OUTPUT_DIR && chown $PGID:$PGID $OUTPUT_DIR
 
 USER pythonuser
