@@ -1,10 +1,10 @@
 # Selecciona la imagen base de Python, en este caso la versión 3.8
 FROM python:3.10-slim-buster
 
-ENV PUID=1000
-ENV PGID=1000
-ENV LOG_LEVEL=DEBUG
-ENV OUTPUT_DIR=/output
+ENV PUID=100
+ENV PGID=1033
+ENV LOG_LEVEL=INFO
+ENV OUTPUT_DIR=/images
 
 # Instala pipenv
 RUN pip install pipenv
