@@ -27,6 +27,4 @@ RUN mkdir $OUTPUT_DIR && chown $PUID:$PGID $OUTPUT_DIR
 
 USER pythonuser
 
-#ENTRYPOINT ["python", "app.py"]
-
-ENTRYPOINT ["sh"]
+ENTRYPOINT ["python", "app.py"]
