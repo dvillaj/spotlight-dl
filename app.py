@@ -23,7 +23,13 @@ class AppConfig:
             return self.config['general']['output.dir']
 
     def get_sleep_time(self):
-        return self.config['general']['sleep.time']
+        import os
+
+        sleep_time = os.getenv('SLEEP_TIME')
+        if sleep_time:
+            return int(sleep_time)
+        else:
+            return int(self.config['general']['sleep.time'])
 
 
 def check_file_exists(file: str) -> bool:
