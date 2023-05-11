@@ -221,10 +221,9 @@ if __name__ == '__main__':
 
     import os
     import time
-    sleep = os.getenv('SLEEP')
-    if sleep:
-        time.sleep(int(sleep))
-
+    sleeptime = os.getenv('SLEEP')
+    if sleeptime:
+        time.sleep(int(sleeptime))
 
     n = 1
     while True:

@@ -1,8 +1,8 @@
 # Selecciona la imagen base de Python, en este caso la versión 3.8
 FROM python:3.10-slim-buster
 
-ENV PUID=100
-ENV PGID=1033
+ENV PUID=1033
+ENV PGID=100
 ENV LOG_LEVEL=INFO
 ENV OUTPUT_DIR=/images
 
@@ -21,8 +21,8 @@ RUN pipenv install --system --deploy
 # Copia todos los archivos del proyecto al directorio de trabajo de la imagen
 COPY . .
 
-RUN groupadd -g $PGID pythongroup
-RUN useradd -u $PUID -g $PGID -m pythonuser -o
+RUN groupadd -g $PGID pythongroup || true
+RUN useradd -u $PUID -g $PGID -m pythonuser
 RUN mkdir $OUTPUT_DIR && chown $PUID:$PGID $OUTPUT_DIR
 
 USER pythonuser
