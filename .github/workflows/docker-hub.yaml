@@ -3,7 +3,7 @@ name: Publish Docker image to Docker Hub
 on:
   push:
     branches: [main]
-    #tags: ['v*'] # Only trigger on tags that start with "v"
+    tags: ['v*'] # Only trigger on tags that start with "v"
 
 env:
   DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
