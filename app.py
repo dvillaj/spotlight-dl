@@ -213,17 +213,33 @@ def add_image_to_database(image_json):
     logger.debug(f"Save data to {json_database} ..")
 
 
+def initial_sleep():
+    import os
+    import time
+
+    sleeptime = os.getenv('SLEEP')
+    if sleeptime:
+        time.sleep(int(sleeptime))
+
+
+def setup_output_dir():
+    import os
+
+    logger = logging.getLogger("setup_output_dir")
+    config = AppConfig()
+    os.system(f'chmod u+rwx {config.get_output_dir()}')
+
+    logger.info("Output dir configured!")
+
+
 if __name__ == '__main__':
     conf_logging()
     logger = logging.getLogger("app")
 
     logger.info("Starting ...")
 
-    import os
-    import time
-    sleeptime = os.getenv('SLEEP')
-    if sleeptime:
-        time.sleep(int(sleeptime))
+    setup_output_dir()
+    initial_sleep()
 
     n = 1
     while True:
