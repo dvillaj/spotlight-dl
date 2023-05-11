@@ -69,10 +69,6 @@ def get_images_data():
 
         image_url_landscape = mi_diccionario['image_fullscreen_001_landscape']['u']
         image_url_portrait = mi_diccionario['image_fullscreen_001_portrait']['u']
-        image_url_landscape2 = mi_diccionario['image_fullscreen_002_landscape']['u']
-        image_url_portrait2 = mi_diccionario['image_fullscreen_002_portrait']['u']
-        image_url_landscape3 = mi_diccionario['image_fullscreen_003_landscape']['u']
-        image_url_portrait3 = mi_diccionario['image_fullscreen_003_portrait']['u']
         title = mi_diccionario['title_text']['tx']
         hs1_title = mi_diccionario['hs1_title_text']['tx']
         hs2_title = mi_diccionario['hs2_title_text']['tx']
@@ -218,11 +214,17 @@ def add_image_to_database(image_json):
 
 
 if __name__ == '__main__':
-
     conf_logging()
     logger = logging.getLogger("app")
 
     logger.info("Starting ...")
+
+    import os
+    import time
+    sleep = os.getenv('SLEEP')
+    if sleep:
+        time.sleep(int(sleep))
+
 
     n = 1
     while True:
