@@ -1,4 +1,6 @@
 import logging
+import threading
+from bottle import Bottle, template, TEMPLATE_PATH
 
 
 class AppConfig:
@@ -181,6 +183,7 @@ def count_images_database():
 
 
 def read_images_database():
+    from datetime import datetime
     import json
     import os
 
@@ -195,7 +198,7 @@ def read_images_database():
                 json_line = json.loads(line)
                 images_json.append(json_line)
 
-    return images_json
+    return sorted(images_json, reverse=True, key=lambda x: datetime.strptime(x['timestamp'], '%Y-%m-%dT%H:%M:%S.%f'))
 
 
 def get_now():
@@ -243,11 +246,33 @@ def setup_output_dir():
     logger.info("Output dir configured!")
 
 
+app = Bottle()
+TEMPLATE_PATH.append('./templates')
+
+
+@app.route('/')
+def index():
+    images = read_images_database()
+    nmax = min(10, len(images))
+
+    print(f"************************ {nmax}")
+    return template('index.html', counter=len(images))  #, imagelist=images[:nmax])
+
+
+def run_server():
+    app.run(host='localhost', port=8080)
+
+
 if __name__ == '__main__':
     conf_logging()
     logger = logging.getLogger("app")
 
     logger.info("Starting ...")
+
+    server_thread = threading.Thread(target=run_server)
+    server_thread.start()
+
+    logger.info(f"Web Server started in thread {server_thread.name} ...")
 
     setup_output_dir()
     initial_sleep()
