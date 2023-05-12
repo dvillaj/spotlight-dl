@@ -52,6 +52,7 @@ def conf_logging(config_file: str = 'logging.ini'):
     else:
         print("Logging config file do no exists!")
 
+
 def join_lines(line1_arg, line2_arg):
     # Join line1 and line2 descriptions
     line1 = line1_arg.strip()
@@ -175,6 +176,10 @@ def sleep():
     time.sleep(seconds)
 
 
+def count_images_database():
+    return len(read_images_database())
+
+
 def read_images_database():
     import json
     import os
@@ -223,9 +228,9 @@ def initial_sleep():
     import os
     import time
 
-    sleeptime = os.getenv('SLEEP')
-    if sleeptime:
-        time.sleep(int(sleeptime))
+    sleep_time = os.getenv('INITIAL_SLEEP')
+    if sleep_time:
+        time.sleep(int(sleep_time))
 
 
 def setup_output_dir():
@@ -248,8 +253,10 @@ if __name__ == '__main__':
     initial_sleep()
 
     n = 1
+    images = count_images_database()
+
     while True:
-        logger.info(f"Iteration {n} ...")
+        logger.info(f"Iteration {n} - Images {images} ...")
 
         for item in get_images_data():
             download_image(item)
@@ -258,6 +265,8 @@ if __name__ == '__main__':
                 tag_image(item)
 
                 add_image_to_database(item)
+
+                images = images + 1
 
                 logger.info(f"Downloaded {item['title']} into {item['image_full_path']} ...")
 

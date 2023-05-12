@@ -3,8 +3,8 @@ FROM python:3.10-slim-buster
 
 ENV PUID=1033
 ENV PGID=100
-ENV LOG_LEVEL=INFO
 ENV OUTPUT_DIR=/images
+ENV TZ=Europe/Madrid
 
 # Instala pipenv
 RUN pip install pipenv
@@ -21,9 +21,10 @@ RUN pipenv install --system --deploy
 # Copia todos los archivos del proyecto al directorio de trabajo de la imagen
 COPY . .
 
-RUN groupadd -g $PGID pythongroup || true
-RUN useradd -u $PUID -g $PGID -m pythonuser
-RUN mkdir $OUTPUT_DIR && chown $PUID:$PGID $OUTPUT_DIR
+RUN groupadd -g $PGID pythongroup || true && \
+    useradd -u $PUID -g $PGID -m pythonuser && \
+    mkdir $OUTPUT_DIR && chown $PUID:$PGID $OUTPUT_DIR && \
+    ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 USER pythonuser
 
