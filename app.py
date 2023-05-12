@@ -255,12 +255,11 @@ def index():
     images = read_images_database()
     nmax = min(10, len(images))
 
-    print(f"************************ {nmax}")
-    return template('index.html', counter=len(images))  #, imagelist=images[:nmax])
+    return template('index.html', counter=len(images), imagelist=images[:nmax])
 
 
 def run_server():
-    app.run(host='localhost', port=8080)
+    app.run(host='0.0.0.0', port=8000)
 
 
 if __name__ == '__main__':

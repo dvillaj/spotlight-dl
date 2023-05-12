@@ -2,8 +2,42 @@
 <html>
 <head>
 	<title>Spotlight-Dl</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </head>
 <body>
-    <h1>Hi</h1>
+
+ 	<div class="container">
+      <div class="row">
+        <div class="col-md-12 mt-5">
+          <div class="border p-3" style="width: 500px;">
+            <h1 class="text-center bg-primary text-white rounded p-2">Total Images: {{ counter }}</h1>
+          </div>
+        </div>
+      </div>
+    </div>
+
+ 	<div class="container">
+        <hr>
+        <h2>Last images downloaded ...</h2>
+        % for image in imagelist:
+        <div class="row">
+            <div class="col-md-4">
+                <a href="{{ image['image_url_landscape'] }}" target="_blank">
+                  <img src="{{ image['image_url_landscape'] }}" alt="Imagen" class="img-fluid img-thumbnail">
+                </a>
+            </div>
+            <div class="col-md-8">
+                <p>{{ image['title'] }}</p>
+                <p>{{ image['timestamp'] }}</p>
+            </div>
+        </div>
+        % end
+    </div>
+
 </body>
 </html>
