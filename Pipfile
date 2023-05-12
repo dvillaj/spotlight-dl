@@ -9,6 +9,7 @@ exif = "*"
 requests = "*"
 pyyaml = "*"
 flask = "*"
+bottle = "*"
 
 [dev-packages]
 

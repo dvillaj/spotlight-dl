@@ -28,4 +28,6 @@ RUN groupadd -g $PGID pythongroup || true && \
 
 USER pythonuser
 
+EXPOSE 8000
+
 ENTRYPOINT ["python", "app.py"]
