@@ -255,7 +255,16 @@ def index():
     images = read_images_database()
     nmax = min(10, len(images))
 
-    return template('index.html', counter=len(images), imagelist=images[:nmax])
+    return template('index.html', counter=len(images), imagelist=images[:nmax], text="Last downloaded images")
+
+@app.route('/random')
+def index():
+    from random import sample
+
+    images = read_images_database()
+    nmax = min(10, len(images))
+
+    return template('index.html', counter=len(images), imagelist=sample(images, nmax), text="Some random images")
 
 
 def run_server():
