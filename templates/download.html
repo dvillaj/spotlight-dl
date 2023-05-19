@@ -20,6 +20,7 @@
             var downloadBtn = document.getElementById('downloadBtn');
             downloadBtn.classList.add('custom-cursor-wait');
             downloadBtn.disabled = true;
+            downloadBtn.innerHTML = 'Downloading...';
             window.location.href = '/downloadImages';
         }
         window.onload = function() {
