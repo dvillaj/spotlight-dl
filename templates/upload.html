@@ -7,15 +7,21 @@
 <body>
     <div class="container">
         <h1>Images Upload</h1>
-        <form action="/uploadFile" method="post" enctype="multipart/form-data">
+        <form action="/uploadFile" method="post" enctype="multipart/form-data" onsubmit="disableButton()">
             <div class="mb-3">
                 <label for="fileid" class="form-label">Select a zipped image file:</label>
                 <input type="file" name="filename" id="fileid" class="form-control" accept=".zip" required>
             </div>
-            <button type="submit" class="btn btn-primary">Upload</button>
+            <button id="uploadBtn" type="submit" class="btn btn-primary">Upload</button>
         </form>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function disableButton() {
+            var uploadBtn = document.getElementById('uploadBtn');
+            uploadBtn.disabled = true;
+            uploadBtn.innerHTML = 'Uploading...';
+        }
+    </script>
 </body>
 </html>

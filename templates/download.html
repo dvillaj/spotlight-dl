@@ -12,7 +12,7 @@
 <body>
     <div class="container">
         <h1 class="mt-5">Download Images</h1>
-        <button id="downloadBtn" class="btn btn-primary mt-3" onclick="startDownload()">Download</button>
+        <button id="downloadBtn" class="btn btn-primary mt-3" onclick="startDownload()" disabled>Download</button>
     </div>
 
     <script>
@@ -21,6 +21,10 @@
             downloadBtn.classList.add('custom-cursor-wait');
             downloadBtn.disabled = true;
             window.location.href = '/downloadImages';
+        }
+        window.onload = function() {
+            var downloadBtn = document.getElementById('downloadBtn');
+            downloadBtn.disabled = false;
         }
     </script>
 </body>
