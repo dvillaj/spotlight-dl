@@ -406,6 +406,7 @@ def upload():
                 make_image_directory(image)
 
                 copy_file(from_path, image['image_full_path'])
+                image['timestamp'] = get_now()
                 add_image_to_database(image)
                 inserted = inserted + 1
 
