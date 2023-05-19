@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Download images file</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/css/bootstrap.min.css">
+    <style>
+        .custom-cursor-wait {
+            cursor: wait;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="mt-5">Download Images</h1>
+        <button id="downloadBtn" class="btn btn-primary mt-3" onclick="startDownload()">Download</button>
+    </div>
+
+    <script>
+        function startDownload() {
+            var downloadBtn = document.getElementById('downloadBtn');
+            downloadBtn.classList.add('custom-cursor-wait');
+            downloadBtn.disabled = true;
+            window.location.href = '/downloadImages';
+        }
+    </script>
+</body>
+</html>

@@ -111,8 +111,16 @@ def download_image(image_json):
 
 
 def save_image(image_json):
-    import os
     from PIL import Image
+
+    make_image_directory(image_json)
+
+    image = Image.open(image_json['image_data'])
+    image.save(image_json['image_full_path'])
+
+
+def make_image_directory(image_json):
+    import os
 
     config = AppConfig()
 
@@ -127,18 +135,17 @@ def save_image(image_json):
     if not os.path.exists(os.path.dirname(full_name)):
         os.makedirs(os.path.dirname(full_name))
 
-    image = Image.open(image_json['image_data'])
-    image.save(full_name)
-
     image_json['image_path'] = image_path
     image_json['image_full_path'] = full_name
 
 
-def exists_image(image_json):
+def get_digest(image_json):
+    return image_json['hex_digest']
+
+
+def exists_image(digest):
     logger = logging.getLogger("exists_image")
     database = read_images_database()
-
-    digest = image_json['hex_digest']
 
     logger.debug(f"Searching {digest} info {len(database)} images ...")
 
@@ -182,13 +189,13 @@ def count_images_database():
     return len(read_images_database())
 
 
-def read_images_database():
+def read_images_database(locationPath = None):
     from datetime import datetime
     import json
     import os
 
     logger = logging.getLogger("read_images_database")
-    json_database = get_json_database_name()
+    json_database = get_json_database_name(locationPath)
 
     images_json = []
 
@@ -207,9 +214,14 @@ def get_now():
     return datetime.datetime.now().isoformat()
 
 
-def get_json_database_name():
+def get_json_database_name(locationPath = None):
     config = AppConfig()
-    return f"{config.get_output_dir()}/{config.get_json_filename()}"
+    if locationPath is None:
+        location = config.get_output_dir()
+    else:
+        location = locationPath
+
+    return f"{location}/{config.get_json_filename()}"
 
 
 def add_image_to_database(image_json):
@@ -218,7 +230,9 @@ def add_image_to_database(image_json):
     logger = logging.getLogger("add_image_to_database")
     json_database = get_json_database_name()
 
-    del image_json['image_data']
+    if 'image_data' in image_json:
+        del image_json['image_data']
+
     image_json['timestamp'] = get_now()
     with open(json_database, 'a') as file:
         file.write(json.dumps(image_json))
@@ -246,6 +260,66 @@ def setup_output_dir():
     logger.info("Output dir configured!")
 
 
+def copy_file(source_path, destination_path):
+    import shutil
+
+    logger = logging.getLogger("copy_file")
+
+    try:
+        shutil.copy2(source_path, destination_path)
+        logger.info(f"File copied from {source_path} to {destination_path} successfully.")
+    except IOError as e:
+        logger.error(f"Error copying the file: {e}")
+        raise e
+
+
+def compress_directory(directory_path, output_filename):
+    import zipfile
+    import os
+
+    logger = logging.getLogger("compress_directory")
+
+    try:
+        with zipfile.ZipFile(output_filename, "w", zipfile.ZIP_DEFLATED) as zipf:
+            for root, _, files in os.walk(directory_path):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    arcname = os.path.relpath(file_path, directory_path)
+                    zipf.write(file_path, arcname)
+
+        logger.info(f"Directory '{directory_path}' compressed to '{output_filename}' successfully.")
+    except Exception as e:
+        logger.error(f"Error compressing directory '{directory_path}': {e}")
+        raise e
+
+
+def decompress_zipfile(archive_path, output_directory):
+    import zipfile
+
+    logger = logging.getLogger("decompress_file")
+
+    try:
+        with zipfile.ZipFile(archive_path, "r") as zipf:
+            zipf.extractall(path=output_directory)
+
+        logger.info(f"Archive '{archive_path}' extracted to '{output_directory}' successfully.")
+    except Exception as e:
+        logger.error(f"Error extracting archive '{archive_path}': {e}")
+        raise e
+
+
+def delete_directory(directory):
+    import shutil
+
+    logger = logging.getLogger("delete_directory")
+    try:
+        shutil.rmtree(directory)
+        logger.info(f"Directory {directory} and its contents have been successfully deleted.")
+    except Exception as e:
+        logger.error(f"Error deleting the directory {directory}: {e}")
+        raise e
+
+
 app = Bottle()
 TEMPLATE_PATH.append('./templates')
 
@@ -257,6 +331,7 @@ def index():
 
     return template('index.html', counter=len(images), imagelist=images[:nmax], text="Last downloaded images")
 
+
 @app.route('/random')
 def index():
     from random import sample
@@ -265,6 +340,80 @@ def index():
     nmax = min(10, len(images))
 
     return template('index.html', counter=len(images), imagelist=sample(images, nmax), text="Some random images")
+
+
+@app.route('/upload')
+def index():
+    return template('upload.html')
+
+
+@app.route('/download')
+def index():
+    return template('download.html')
+
+
+@app.route('/downloadImages')
+def download():
+    from bottle import static_file, response
+    import os
+    import tempfile
+    import time
+
+    config = AppConfig()
+    tmp_dir = tempfile.mkdtemp()
+
+    timestamp = time.strftime("%Y%m%d%H%M%S")
+    filename = f"images-{timestamp}.zip"
+    filepath = f'{tmp_dir}/{filename}'
+
+    compress_directory(config.get_output_dir(), filepath)
+
+    response.headers['Content-Type'] = 'application/octet-stream'
+    response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return static_file(filename, root=os.path.dirname(filepath), download=filename)
+
+@app.route('/uploadFile', method='POST')
+def upload():
+    from bottle import request
+    import os
+    import tempfile
+    import json
+
+    logger = logging.getLogger("setup_output_dir")
+    config = AppConfig()
+
+    upload = request.files.get('filename')
+    filename = upload.filename
+    if '.zip' in filename:
+        tmp_dir = tempfile.mkdtemp()
+        logger.debug(f"Temp path: {tmp_dir}")
+        file_path = os.path.join(tmp_dir, filename)
+        upload.save(file_path)
+
+        decompress_zipfile(file_path, tmp_dir)
+
+        tmp_path = f"{tmp_dir}"
+        images = read_images_database(tmp_path)
+
+        inserted = 0
+
+        for image in images:
+            logger.debug(json.dumps(image, indent = 3))
+            if not exists_image(get_digest(image)):
+                logger.info(f"Adding image: {image['title']}")
+
+                from_path = f"{tmp_path}/{image['image_path']}"
+                make_image_directory(image)
+
+                copy_file(from_path, image['image_full_path'])
+                add_image_to_database(image)
+                inserted = inserted + 1
+
+        delete_directory(tmp_dir)
+
+        return f'File {filename} has been processed successfully with {len(images)} images ({inserted} new)'
+    else:
+        return 'The upload file is not a zip file!'
 
 
 def run_server():
@@ -293,7 +442,7 @@ if __name__ == '__main__':
 
         for item in get_images_data():
             download_image(item)
-            if not exists_image(item):
+            if not exists_image(get_digest(item)):
                 save_image(item)
                 tag_image(item)
 
