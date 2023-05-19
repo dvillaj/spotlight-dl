@@ -33,6 +33,15 @@ class AppConfig:
         else:
             return int(self.config['general']['sleep.time'])
 
+    def get_initial_sleep(self):
+        import os
+
+        sleep_time = os.getenv('INITIAL_SLEEP')
+        if sleep_time:
+            return int(sleep_time)
+        else:
+            return int(self.config['general']['initial.sleep.time'])
+
 
 def check_file_exists(file: str) -> bool:
     from os.path import exists
@@ -194,7 +203,6 @@ def read_images_database(locationPath = None):
     import json
     import os
 
-    logger = logging.getLogger("read_images_database")
     json_database = get_json_database_name(locationPath)
 
     images_json = []
@@ -242,11 +250,14 @@ def add_image_to_database(image_json):
 
 
 def initial_sleep():
-    import os
     import time
 
-    sleep_time = os.getenv('INITIAL_SLEEP')
+    logger = logging.getLogger("initial_sleep")
+
+    config = AppConfig()
+    sleep_time = config.get_initial_sleep()
     if sleep_time:
+        logger.info(f"Sleeping {sleep_time} seconds ...")
         time.sleep(int(sleep_time))
 
 
@@ -255,8 +266,16 @@ def setup_output_dir():
 
     logger = logging.getLogger("setup_output_dir")
     config = AppConfig()
-    os.system(f'chmod u+rwx {config.get_output_dir()}')
 
+    output_dir = config.get_output_dir()
+
+    logger.info(f"Output dir: {output_dir}")
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+        logger.info(f"Output dir created!")
+
+    os.system(f'chmod u+rwx {output_dir}')
     logger.info("Output dir configured!")
 
 
@@ -379,7 +398,7 @@ def upload():
     import tempfile
     import json
 
-    logger = logging.getLogger("setup_output_dir")
+    logger = logging.getLogger("uploadFile")
     config = AppConfig()
 
     upload = request.files.get('filename')

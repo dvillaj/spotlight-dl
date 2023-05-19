@@ -4,4 +4,5 @@ spotlight:
 general:
   output.dir: c:/tmp/images
   sleep.time: 3
+  initial.sleep.time: 0
   json.filename: images_database.jsonl
