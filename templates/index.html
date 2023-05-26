@@ -11,41 +11,41 @@
 </head>
 <body>
 
-	<div class="container">
-		<div class="row">
-			<div class="col-md-12 mt-5">
-				<div class="border p-3" style="width: 500px;">
-					<a href="/" onclick="location.reload(true)">
-						<h1 class="text-center bg-primary text-white rounded p-2">Total Images: {{ counter }}</h1>
-					</a>
-				</div>
-			</div>
-		</div>
-	</div>
+ 	<div class="container">
+      <div class="row">
+        <div class="col-md-12 mt-5">
+          <div class="border p-3" style="width: 500px;">
+            <a href="/" onclick="location.reload(true)">
+              <h1 class="text-center bg-primary text-white rounded p-2">Total Images: {{ counter }}</h1>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
 
-	<div class="container mt-4">
-		<div class="row">
-			<div class="col-md-2">
-				<a href="/random" class="btn btn-primary btn-block">Random</a>
-			</div>
-			<div class="col-md-2">
-				<a href="/download" class="btn btn-primary btn-block">Download</a>
-			</div>
-			<div class="col-md-2">
-				<a href="/upload" class="btn btn-primary btn-block">Upload</a>
-			</div>
-		</div>
-	</div>
+    <div class="container mt-4">
+      <div class="row">
+        <div class="col-md-2">
+          <a href="/random" class="btn btn-primary btn-block">Random</a>
+        </div>
+        <div class="col-md-2">
+          <a href="/download" class="btn btn-primary btn-block">Download</a>
+        </div>
+        <div class="col-md-2">
+          <a href="/upload" class="btn btn-primary btn-block">Upload</a>
+        </div>
+      </div>
+    </div>
 
 
-	<div class="container">
-		<hr>
+ 	<div class="container">
+        <hr>
 
 		<div class="mt-4">
-			<form id="search-form" action="/search" method="GET" onsubmit="return validateSearch()">
+			<form id="search-form" action="/search" method="GET">
 				<div class="form-row">
 					<div class="col-md-8">
-						<input type="text" class="form-control" name="search-term" id="search-term-input" placeholder="Search Images">
+						<input type="text" class="form-control" name="search-term" placeholder="Search Images">
 					</div>
 					<div class="col-md-4">
 						<button type="submit" class="btn btn-primary btn-block">Search</button>
@@ -55,32 +55,28 @@
 		</div>
 
 		<hr>
-		<h2>{{ text }} ...</h2>
-		% for image in imagelist:
-		<div class="row">
-			<div class="col-md-4">
-				<a href="{{ image['image_url_landscape'] }}" target="_blank">
-					<img src="{{ image['image_url_landscape'] }}" alt="Imagen" class="img-fluid img-thumbnail">
-				</a>
-			</div>
-			<div class="col-md-8">
-				<p>{{ image['title'] }}</p>
-				<p>{{ image['timestamp'] }} [{{ image['country_name'] }}]</p>
-			</div>
-		</div>
-		% end
-	</div>
+        <h2>{{ text }} ...</h2>
+        % for image in imagelist:
+        <div class="row">
+            <div class="col-md-4">
+                <a href="{{ image['image_url_landscape'] }}" target="_blank">
+                  <img src="{{ image['image_url_landscape'] }}" alt="Imagen" class="img-fluid img-thumbnail">
+                </a>
+            </div>
+            <div class="col-md-8">
+                <p>{{ image['title'] }}</p>
+                <p>{{ image['timestamp'] }} [{{ image['country_name'] }}]</p>
+            </div>
+        </div>
+        % end
 
-	<script>
-		function validateSearch() {
-			var searchTerm = document.getElementById('search-term-input').value.trim();
-			if (searchTerm === '') {
-				alert('Please enter a search term.');
-				return false;
-			}
-			return true;
-		}
-	</script>
+		<hr>
+		<div class="col-md-8">
+			% for term in search_terms:
+				<a href="/search?search-term={{ term }}">{{ term }}</a>
+			% end
+		</div>
+    </div>
 
 </body>
 </html>

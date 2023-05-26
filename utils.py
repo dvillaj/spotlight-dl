@@ -19,7 +19,7 @@ class AppConfig:
                 .replace("${time}", datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"))
                 .replace("${country}", country)
                 .replace("${language}", language)
-          )
+                )
 
     def get_country_name(self, code):
         return self.countries[code.upper()]
@@ -85,7 +85,6 @@ class AppConfig:
             return int(sleep_time)
         else:
             return int(self.config['general']['initial.sleep.time'])
-
 
     @staticmethod
     def get_countries():
@@ -159,7 +158,8 @@ def get_images_data():
 
             yield {"image_url_landscape": image_url_landscape, "image_url_portrait": image_url_portrait,
                    "title": title, "description": description, "copyright": copyright_text,
-                   "hs1_title": hs1_title, "hs2_title": hs2_title, "hs1_cta_text": hs1_cta_text, "hs2_cta_text": hs2_cta_text,
+                   "hs1_title": hs1_title, "hs2_title": hs2_title, "hs1_cta_text": hs1_cta_text,
+                   "hs2_cta_text": hs2_cta_text,
                    "country": country, "country_name": config.get_country_name(country)
                    }
 
@@ -169,6 +169,7 @@ def get_text(dictionary, key):
         return dictionary[key]['tx']
     except KeyError:
         return ''
+
 
 def download_image(image_json):
     import requests
@@ -266,7 +267,7 @@ def count_images_database():
     return len(read_images_database())
 
 
-def read_images_database(locationPath = None):
+def read_images_database(locationPath=None):
     from datetime import datetime
     import json
     import os
@@ -298,7 +299,7 @@ def get_now():
     return datetime.datetime.now().isoformat()
 
 
-def get_json_database_name(locationPath = None):
+def get_json_database_name(locationPath=None):
     config = AppConfig()
     if locationPath is None:
         location = config.get_output_dir()
@@ -470,3 +471,23 @@ def insert_images_from_backup(backup_dir):
 
     logger.info(f"Inserted {inserted} of {len(images)} images!")
     return inserted
+
+
+def get_links():
+    import os
+
+    config = AppConfig()
+    images_dir = config.get_output_dir()
+
+    dirs = []
+    for name in os.listdir(images_dir):
+        if os.path.isdir(os.path.join(images_dir, name)):
+            if 'painting' in name.lower():
+                dirs.append('Painting')
+            else:
+                if 'galaxy' in name.lower():
+                    dirs.append('Galaxy')
+                else:
+                    dirs.append(name)
+
+    return set(dirs)

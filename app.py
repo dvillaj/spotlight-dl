@@ -12,7 +12,7 @@ def index():
     images = read_images_database()
     nmax = min(10, len(images))
 
-    return template('index.html', counter=len(images), imagelist=images[:nmax], text="Last downloaded images")
+    return template_and_searchterms("Last downloaded images", images, images[:nmax])
 
 
 # Ruta para la búsqueda
@@ -22,9 +22,14 @@ def search():
     text = f"Results for '{search_term}'"
 
     images = read_images_database()
-    image_list = [item for item in images if search_term in item['title']]
+    image_list = [item for item in images if search_term.lower() in item['title'].lower()]
 
-    return template('index.html', counter=len(images), text=text, imagelist=image_list[:10])
+    return template_and_searchterms(text, images, image_list[:10])
+
+
+def template_and_searchterms(text, images, image_list):
+    search_terms = get_links()
+    return template('index.html', counter=len(images), text=text, imagelist=image_list, search_terms=search_terms)
 
 
 @app.route('/random')
@@ -34,8 +39,7 @@ def index():
     images = read_images_database()
     nmax = min(10, len(images))
 
-    return template('index.html', counter=len(images), imagelist=sample(images, nmax), text="Some random images")
-
+    return template_and_searchterms("Some random images", images, sample(images, nmax))
 
 @app.route('/upload')
 def index():
