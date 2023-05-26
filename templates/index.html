@@ -64,8 +64,11 @@
                 </a>
             </div>
             <div class="col-md-8">
-                <p>{{ image['title'] }}</p>
+                <p class="font-weight-bold">{{ image['title'] }}</p>
+                <p>{{ image['short_description'] }}</p>
                 <p>{{ image['timestamp'] }} [{{ image['country_name'] }}]</p>
+                <p>{{ image['hex_digest'] }}</p>
+
             </div>
         </div>
         % end

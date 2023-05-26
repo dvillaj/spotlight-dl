@@ -282,6 +282,9 @@ def read_images_database(locationPath=None):
             for line in archivo_jsonl:
                 json_line = json.loads(line)
 
+                if 'description' not in json_line:
+                    json_line['description'] = ""
+
                 if 'country' not in json_line:
                     json_line['country'] = "Unknown"
 

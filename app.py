@@ -22,13 +22,24 @@ def search():
     text = f"Results for '{search_term}'"
 
     images = read_images_database()
-    image_list = [item for item in images if search_term.lower() in item['title'].lower()]
+    image_list = [item for item in images if search_term.lower() in (
+            item['title'] + item['description'] + item['hex_digest']).lower()]
 
     return template_and_searchterms(text, images, image_list[:10])
 
 
 def template_and_searchterms(text, images, image_list):
     search_terms = get_links()
+
+    for image in image_list:
+        description = ""
+        if 'description' in image:
+            description = image["description"]
+            if image['title'] in description:
+                description = description[len(image['title']) + 2:]
+
+        image["short_description"] = description
+
     return template('index.html', counter=len(images), text=text, imagelist=image_list, search_terms=search_terms)
 
 
@@ -98,7 +109,7 @@ def upload():
 
 
 def run_server():
-    app.run(host='0.0.0.0', port=8001)
+    app.run(host='0.0.0.0', port=8000)
 
 
 if __name__ == '__main__':
