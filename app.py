@@ -37,6 +37,8 @@ def template_and_searchterms(text, images, image_list):
             description = image["description"]
             if image['title'] in description:
                 description = description[len(image['title']) + 2:]
+            if description.strip() == ".":
+                description = ""
 
         image["short_description"] = description
 
