@@ -63,8 +63,6 @@ def upload():
     import tempfile
 
     logger = logging.getLogger("uploadFile")
-    config = AppConfig()
-
     upload = request.files.get('filename')
     filename = upload.filename
     if '.zip' in filename:
