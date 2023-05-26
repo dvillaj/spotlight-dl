@@ -1,6 +1,6 @@
 import logging
 import threading
-from bottle import Bottle, template, TEMPLATE_PATH
+from bottle import Bottle, template, TEMPLATE_PATH, request
 from utils import *
 
 app = Bottle()
@@ -13,6 +13,18 @@ def index():
     nmax = min(10, len(images))
 
     return template('index.html', counter=len(images), imagelist=images[:nmax], text="Last downloaded images")
+
+
+# Ruta para la búsqueda
+@app.route('/search')
+def search():
+    search_term = request.query.get('search-term')
+    text = f"Results for '{search_term}'"
+
+    images = read_images_database()
+    image_list = [item for item in images if search_term in item['title']]
+
+    return template('index.html', counter=len(images), text=text, imagelist=image_list[:10])
 
 
 @app.route('/random')
@@ -82,7 +94,7 @@ def upload():
 
 
 def run_server():
-    app.run(host='0.0.0.0', port=8000)
+    app.run(host='0.0.0.0', port=8001)
 
 
 if __name__ == '__main__':

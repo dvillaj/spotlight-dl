@@ -40,6 +40,21 @@
 
  	<div class="container">
         <hr>
+
+		<div class="mt-4">
+			<form id="search-form" action="/search" method="GET">
+				<div class="form-row">
+					<div class="col-md-8">
+						<input type="text" class="form-control" name="search-term" placeholder="Search Images">
+					</div>
+					<div class="col-md-4">
+						<button type="submit" class="btn btn-primary btn-block">Search</button>
+					</div>
+				</div>
+			</form>
+		</div>
+
+		<hr>
         <h2>{{ text }} ...</h2>
         % for image in imagelist:
         <div class="row">
