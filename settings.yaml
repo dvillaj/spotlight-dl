@@ -1,8 +1,11 @@
 spotlight:
-  url: https://arc.msn.com/v3/Delivery/Placement?pid=209567&fmt=json&rafb=0&ua=WindowsShellClient%2F0&cdm=1&disphorzres=9999&dispvertres=9999&lo=80217&pl=en-US&lc=en-US&ctry=us&time=2017-12-31T23:59:59Z
+  url: https://arc.msn.com/v3/Delivery/Placement?pid=${pid}&fmt=json&rafb=0&ua=WindowsShellClient%2F0&cdm=1&disphorzres=9999&dispvertres=9999&lo=80217&pl=${language}&lc=${language}&ctry=${country}&time=${time}
+  pid: 209567
+  country: random
+  language: en-US
 
 general:
   output.dir: c:/tmp/images
-  sleep.time: 3
+  sleep.time: 1
   initial.sleep.time: 0
   json.filename: images_database.jsonl

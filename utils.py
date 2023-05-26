@@ -5,7 +5,46 @@ class AppConfig:
             self.config = yaml.safe_load(f)
 
     def get_url(self):
-        return self.config['spotlight']['url']
+        from datetime import datetime
+
+        url = self.config['spotlight']['url']
+        pid = self.config['spotlight']['pid']
+        country = self.get_country()
+        language = self.get_language()
+
+        return (url
+                .replace("${pid}", str(pid))
+                .replace("${time}", datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"))
+                .replace("${country}", country)
+                .replace("${language}", language)
+          )
+
+    def get_country(self):
+        import os
+
+        try:
+            env_country = os.getenv('COUNTRY')
+            if env_country:
+                country = env_country
+            else:
+                country = self.config['spotlight']['country']
+
+            if country == "random":
+                return random_country_code().lower()
+            else:
+                return country
+
+        except KeyError:
+            return random_country_code().lower()
+
+    def get_language(self):
+        import os
+
+        env_language = os.getenv('LANGUAGE')
+        if env_language:
+            return env_language
+        else:
+            return self.config['spotlight']['language']
 
     def get_json_filename(self):
         return self.config['general']['json.filename']
@@ -78,27 +117,38 @@ def get_images_data():
     config = AppConfig()
     data = requests.get(config.get_url()).json()
 
-    for i, items in enumerate(data['batchrsp']['items']):
-        mi_diccionario = json.loads(items['item'])['ad']
+    if 'items' in data['batchrsp']:
+        for i, items in enumerate(data['batchrsp']['items']):
+            mi_diccionario = json.loads(items['item'])['ad']
 
-        image_url_landscape = mi_diccionario['image_fullscreen_001_landscape']['u']
-        image_url_portrait = mi_diccionario['image_fullscreen_001_portrait']['u']
-        title = mi_diccionario['title_text']['tx']
-        hs1_title = mi_diccionario['hs1_title_text']['tx']
-        hs2_title = mi_diccionario['hs2_title_text']['tx']
-        hs1_cta_text = mi_diccionario['hs1_cta_text']['tx']
-        hs2_cta_text = mi_diccionario['hs2_cta_text']['tx']
-        copyright_text = mi_diccionario['copyright_text']['tx']
+            image_url_landscape = mi_diccionario['image_fullscreen_001_landscape']['u']
+            image_url_portrait = mi_diccionario['image_fullscreen_001_portrait']['u']
+            title = get_text(mi_diccionario, 'title_text')
 
-        description = f"{title}. {join_lines(hs1_title, hs1_cta_text)}. {join_lines(hs2_title, hs2_cta_text)}"
-        if "Microsoft" in description or "AI" in description:
-            description = title
+            if not title:
+                title = "Unknown"
 
-        yield {"image_url_landscape": image_url_landscape, "image_url_portrait": image_url_portrait,
-               "title": title, "description": description, "copyright": copyright_text,
-               "hs1_title": hs1_title, "hs2_title": hs2_title, "hs1_cta_text": hs1_cta_text, "hs2_cta_text": hs2_cta_text
-               }
+            hs1_title = get_text(mi_diccionario, 'hs1_title_text')
+            hs2_title = get_text(mi_diccionario, 'hs2_title_text')
+            hs1_cta_text = get_text(mi_diccionario, 'hs1_cta_text')
+            hs2_cta_text = get_text(mi_diccionario, 'hs2_cta_text')
+            copyright_text = get_text(mi_diccionario, 'copyright_text')
 
+            description = f"{title}. {join_lines(hs1_title, hs1_cta_text)}. {join_lines(hs2_title, hs2_cta_text)}"
+            if "Microsoft" in description or "AI" in description:
+                description = title
+
+            yield {"image_url_landscape": image_url_landscape, "image_url_portrait": image_url_portrait,
+                   "title": title, "description": description, "copyright": copyright_text,
+                   "hs1_title": hs1_title, "hs2_title": hs2_title, "hs1_cta_text": hs1_cta_text, "hs2_cta_text": hs2_cta_text
+                   }
+
+
+def get_text(dictionary, key):
+    try:
+        return dictionary[key]['tx']
+    except KeyError:
+        return ''
 
 def download_image(image_json):
     import requests
@@ -392,3 +442,29 @@ def insert_images_from_backup(backup_dir):
 
     logger.info(f"Inserted {inserted} of {len(images)} images!")
     return inserted
+
+
+def country_codes():
+    return [
+        'AF', 'AX', 'AL', 'DZ', 'AS', 'AD', 'AO', 'AI', 'AQ', 'AG', 'AR', 'AM', 'AW', 'AU', 'AT', 'AZ', 'BS', 'BH', 'BD',
+        'BB', 'BY', 'BE', 'BZ', 'BJ', 'BM', 'BT', 'BO', 'BQ', 'BA', 'BW', 'BV', 'BR', 'IO', 'BN', 'BG', 'BF', 'BI', 'KH',
+        'CM', 'CA', 'CV', 'KY', 'CF', 'TD', 'CL', 'CN', 'CX', 'CC', 'CO', 'KM', 'CG', 'CD', 'CK', 'CR', 'CI', 'HR', 'CU',
+        'CW', 'CY', 'CZ', 'DK', 'DJ', 'DM', 'DO', 'EC', 'EG', 'SV', 'GQ', 'ER', 'EE', 'ET', 'FK', 'FO', 'FJ', 'FI', 'FR',
+        'GF', 'PF', 'TF', 'GA', 'GM', 'GE', 'DE', 'GH', 'GI', 'GR', 'GL', 'GD', 'GP', 'GU', 'GT', 'GG', 'GN', 'GW', 'GY',
+        'HT', 'HM', 'VA', 'HN', 'HK', 'HU', 'IS', 'IN', 'ID', 'IR', 'IQ', 'IE', 'IM', 'IL', 'IT', 'JM', 'JP', 'JE', 'JO',
+        'KZ', 'KE', 'KI', 'KP', 'KR', 'KW', 'KG', 'LA', 'LV', 'LB', 'LS', 'LR', 'LY', 'LI', 'LT', 'LU', 'MO', 'MK', 'MG',
+        'MW', 'MY', 'MV', 'ML', 'MT', 'MH', 'MQ', 'MR', 'MU', 'YT', 'MX', 'FM', 'MD', 'MC', 'MN', 'ME', 'MS', 'MA', 'MZ',
+        'MM', 'NA', 'NR', 'NP', 'NL', 'NC', 'NZ', 'NI', 'NE', 'NG', 'NU', 'NF', 'MP', 'NO', 'OM', 'PK', 'PW', 'PS', 'PA',
+        'PG', 'PY', 'PE', 'PH', 'PN', 'PL', 'PT', 'PR', 'QA', 'RE', 'RO', 'RU', 'RW', 'BL', 'SH', 'KN', 'LC', 'MF', 'PM',
+        'VC', 'WS', 'SM', 'ST', 'SA', 'SN', 'RS', 'SC', 'SL', 'SG', 'SX', 'SK', 'SI', 'SB', 'SO', 'ZA', 'GS', 'SS', 'ES',
+        'LK', 'SD', 'SR', 'SJ', 'SZ', 'SE', 'CH', 'SY', 'TW', 'TJ', 'TZ', 'TH', 'TL', 'TG', 'TK', 'TO', 'TT', 'TN', 'TR',
+        'TM', 'TC', 'TV', 'UG', 'UA', 'AE', 'GB', 'US', 'UM', 'UY', 'UZ', 'VU', 'VE', 'VN', 'VG', 'VI', 'WF', 'EH', 'YE',
+        'ZM', 'ZW'
+    ]
+
+
+def random_country_code():
+    import random
+
+    return random.choice(country_codes())
+
