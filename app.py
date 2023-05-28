@@ -32,7 +32,7 @@ def search():
 
 
 def template_and_searchterms(text, images, image_list):
-    search_terms = get_links()
+    search_terms = get_links(grouped_terms=["Painting", "Galaxy"])
 
     for image in image_list:
         description = ""

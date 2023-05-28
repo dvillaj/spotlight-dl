@@ -497,21 +497,40 @@ def insert_images_from_backup(backup_dir):
     return inserted_images
 
 
-def get_links():
+
+def get_file_count(directory):
+    import os
+    count = 0
+    for root, dirs, files in os.walk(directory):
+        count += len(files)
+    return count
+
+
+def get_links(grouped_terms=[]):
     import os
 
     config = AppConfig()
     images_dir = config.get_output_dir()
 
-    dirs = []
-    for name in os.listdir(images_dir):
-        if os.path.isdir(os.path.join(images_dir, name)):
-            if 'painting' in name.lower():
-                dirs.append('Painting')
-            else:
-                if 'galaxy' in name.lower():
-                    dirs.append('Galaxy')
-                else:
-                    dirs.append(name)
+    subdirectories = []
+    term_counts = {term: 0 for term in grouped_terms}
 
-    return set(dirs)
+    for name in os.listdir(images_dir):
+        subdir_path = os.path.join(images_dir, name)
+        if os.path.isdir(subdir_path):
+            for term in grouped_terms:
+                if term.lower() in name.lower():
+                    term_counts[term] += get_file_count(subdir_path)
+                    break
+            else:
+                file_count = get_file_count(subdir_path)
+                subdirectories.append((name, file_count))
+
+    for term, count in term_counts.items():
+        if count:
+            subdirectories.append((term, count))
+
+    return sorted(subdirectories, key=lambda x: x[1], reverse=True)
+
+
+
