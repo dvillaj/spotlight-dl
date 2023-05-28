@@ -42,10 +42,10 @@
         <hr>
 
 		<div class="mt-4">
-			<form id="search-form" action="/search" method="GET">
+            <form id="search-form" action="/search" method="GET" onsubmit="return validateSearchForm()">
 				<div class="form-row">
 					<div class="col-md-8">
-						<input type="text" class="form-control" name="search-term" placeholder="Search Images">
+						<input type="text" class="form-control" name="search-term" id="search-term" placeholder="Search Images">
 					</div>
 					<div class="col-md-4">
 						<button type="submit" class="btn btn-primary btn-block">Search</button>
@@ -80,6 +80,16 @@
 			% end
 		</div>
     </div>
+
+    <script>
+		function validateSearchForm() {
+			var searchTerm = document.getElementById('search-term').value;
+			if (searchTerm.trim() === '') {
+				return false; // Prevent form submission
+			}
+			return true; // Allow form submission
+		}
+    </script>
 
 </body>
 </html>

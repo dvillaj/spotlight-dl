@@ -5,7 +5,9 @@ spotlight:
   language: en-US
 
 general:
+  port: 8000
   output.dir: c:/tmp/images
-  sleep.time: 1
+  sleep.time: 3
   initial.sleep.time: 0
+  imagesPerPage: 15
   json.filename: images_database.jsonl

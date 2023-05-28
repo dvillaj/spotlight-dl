@@ -9,8 +9,9 @@ TEMPLATE_PATH.append('./templates')
 
 @app.route('/')
 def index():
+    config = AppConfig()
     images = read_images_database()
-    nmax = min(10, len(images))
+    nmax = min(config.get_images_per_page(), len(images))
 
     return template_and_searchterms("Last downloaded images", images, images[:nmax])
 
@@ -18,14 +19,15 @@ def index():
 # Ruta para la búsqueda
 @app.route('/search')
 def search():
-    search_term = request.query.get('search-term')
+    config = AppConfig()
+    search_term = request.query.get('search-term').strip()
     text = f"Results for '{search_term}'"
 
     images = read_images_database()
     image_list = [item for item in images if search_term.lower() in (
-            item['title'] + item['description'] + item['hex_digest']).lower()]
+            item['title'] + item['description'] + item['hex_digest'] + item['timestamp']).lower()]
 
-    return template_and_searchterms(text, images, image_list[:10])
+    return template_and_searchterms(text, images, image_list[:config.get_images_per_page()])
 
 
 def template_and_searchterms(text, images, image_list):
@@ -49,8 +51,9 @@ def template_and_searchterms(text, images, image_list):
 def index():
     from random import sample
 
+    config = AppConfig()
     images = read_images_database()
-    nmax = min(10, len(images))
+    nmax = min(config.get_images_per_page(), len(images))
 
     return template_and_searchterms("Some random images", images, sample(images, nmax))
 
@@ -111,7 +114,8 @@ def upload():
 
 
 def run_server():
-    app.run(host='0.0.0.0', port=8000)
+    config = AppConfig()
+    app.run(host='0.0.0.0', port=config.get_port())
 
 
 if __name__ == '__main__':

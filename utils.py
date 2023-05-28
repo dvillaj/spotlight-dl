@@ -1,17 +1,28 @@
 class AppConfig:
 
+    config = None
+    countries = None
+
     def __init__(self):
         import yaml
-        with open("settings.yaml", "r") as f:
-            self.config = yaml.safe_load(f)
 
-        self.countries = self.get_countries()
+        if not AppConfig.config:
+            with open("settings.yaml", "r") as f:
+                AppConfig.config = yaml.safe_load(f)
+
+        if not AppConfig.countries:
+            AppConfig.countries = self.get_countries()
+
+    def get_port(self):
+
+        return AppConfig.config['general']['port']
+
 
     def get_url(self, country):
         from datetime import datetime
 
-        url = self.config['spotlight']['url']
-        pid = self.config['spotlight']['pid']
+        url = AppConfig.config['spotlight']['url']
+        pid = AppConfig.config['spotlight']['pid']
         language = self.get_language()
 
         return (url
@@ -22,7 +33,7 @@ class AppConfig:
                 )
 
     def get_country_name(self, code):
-        return self.countries[code.upper()]
+        return AppConfig.countries[code.upper()]
 
     def get_country(self):
         import os
@@ -32,7 +43,7 @@ class AppConfig:
             if env_country:
                 country = env_country.upper()
             else:
-                country = self.config['spotlight']['country'].upper()
+                country = AppConfig.config['spotlight']['country'].upper()
 
             if country == "RANDOM":
                 return self.get_random_country()
@@ -42,9 +53,10 @@ class AppConfig:
         except KeyError:
             return self.get_random_country()
 
-    def get_random_country(self):
+    @staticmethod
+    def get_random_country():
         import random
-        country_keys = list(self.countries.keys())
+        country_keys = list(AppConfig.countries.keys())
         return random.choice(country_keys)
 
     def get_language(self):
@@ -54,10 +66,19 @@ class AppConfig:
         if env_language:
             return env_language
         else:
-            return self.config['spotlight']['language']
+            return AppConfig.config['spotlight']['language']
+
+    def get_images_per_page(self):
+        import os
+
+        env_images = os.getenv('IMAGES_PER_PAGE')
+        if env_images:
+            return int(env_images)
+        else:
+            return AppConfig.config['general']['imagesPerPage']
 
     def get_json_filename(self):
-        return self.config['general']['json.filename']
+        return AppConfig.config['general']['json.filename']
 
     def get_output_dir(self):
         import os
@@ -66,7 +87,7 @@ class AppConfig:
         if output_dir:
             return output_dir
         else:
-            return self.config['general']['output.dir']
+            return AppConfig.config['general']['output.dir']
 
     def get_sleep_time(self):
         import os
@@ -75,7 +96,7 @@ class AppConfig:
         if sleep_time:
             return int(sleep_time)
         else:
-            return int(self.config['general']['sleep.time'])
+            return int(AppConfig.config['general']['sleep.time'])
 
     def get_initial_sleep(self):
         import os
@@ -84,7 +105,7 @@ class AppConfig:
         if sleep_time:
             return int(sleep_time)
         else:
-            return int(self.config['general']['initial.sleep.time'])
+            return int(AppConfig.config['general']['initial.sleep.time'])
 
     @staticmethod
     def get_countries():
