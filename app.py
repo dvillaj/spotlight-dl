@@ -21,11 +21,12 @@ def index():
 def search():
     config = AppConfig()
     search_term = request.query.get('search-term').strip()
-    text = f"Results for '{search_term}'"
 
     images = read_images_database()
     image_list = [item for item in images if search_term.lower() in (
             item['title'] + item['description'] + item['hex_digest'] + item['timestamp']).lower()]
+
+    text = f"{len(image_list)} images found for '{search_term}'"
 
     return template_and_searchterms(text, images, image_list[:config.get_images_per_page()])
 
