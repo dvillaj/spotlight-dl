@@ -95,6 +95,8 @@ def upload():
     import os
     import tempfile
 
+    config = AppConfig()
+
     logger = logging.getLogger("uploadFile")
     upload = request.files.get('filename')
     filename = upload.filename
@@ -105,13 +107,20 @@ def upload():
         upload.save(file_path)
 
         decompress_zipfile(file_path, tmp_dir)
-        inserted = insert_images_from_backup(tmp_dir)
+        inserted_images = insert_images_from_backup(tmp_dir)
 
         delete_directory(tmp_dir)
 
-        return f'File {filename} has been processed successfully with {inserted} images inserted'
+        text = f'{len(inserted_images)} new images has been uploaded'
+        nmax = min(config.get_images_per_page(), len(inserted_images))
+
+        images = read_images_database()
+
+        return template_and_searchterms(text, images, inserted_images[:nmax])
+
     else:
-        return 'The upload file is not a zip file!'
+        error_message = 'The uploaded file is not a zip file!'
+        return template('error.html', error_message=error_message)
 
 
 def run_server():

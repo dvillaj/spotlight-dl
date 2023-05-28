@@ -473,7 +473,7 @@ def insert_images_from_backup(backup_dir):
     logger.info(f"Backup Dir: {backup_dir}")
     images = read_images_database(backup_dir)
 
-    inserted = 0
+    inserted_images = []
     for image in images:
         logger.debug(json.dumps(image, indent=3))
         if not exists_image(get_digest(image)):
@@ -491,10 +491,10 @@ def insert_images_from_backup(backup_dir):
                 image['timestamp'] = get_now()
                 add_image_to_database(image)
 
-            inserted = inserted + 1
+                inserted_images.append(image)
 
-    logger.info(f"Inserted {inserted} of {len(images)} images!")
-    return inserted
+    logger.info(f"Inserted {len(inserted_images)} of {len(images)} images!")
+    return inserted_images
 
 
 def get_links():

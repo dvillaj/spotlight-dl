@@ -15,18 +15,24 @@
         <button id="downloadBtn" class="btn btn-primary mt-3" onclick="startDownload()" disabled>Download</button>
     </div>
 
-    <script>
-        function startDownload() {
-            var downloadBtn = document.getElementById('downloadBtn');
-            downloadBtn.classList.add('custom-cursor-wait');
-            downloadBtn.disabled = true;
-            downloadBtn.innerHTML = 'Downloading...';
-            window.location.href = '/downloadImages';
-        }
-        window.onload = function() {
-            var downloadBtn = document.getElementById('downloadBtn');
-            downloadBtn.disabled = false;
-        }
-    </script>
+<script>
+    function startDownload() {
+        var downloadBtn = document.getElementById('downloadBtn');
+        downloadBtn.classList.add('custom-cursor-wait');
+        downloadBtn.disabled = true;
+        downloadBtn.innerHTML = 'Downloading...';
+        window.location.href = '/downloadImages';
+
+        setTimeout(function() {
+            window.location.href = '/';
+        }, 3000);
+    }
+
+    window.onload = function() {
+        var downloadBtn = document.getElementById('downloadBtn');
+        downloadBtn.disabled = false;
+    }
+</script>
+
 </body>
 </html>
