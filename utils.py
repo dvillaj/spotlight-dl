@@ -268,6 +268,8 @@ def clean_database():
     logger.debug(f"Clean database {get_json_database_name()} ...")
 
     remove_database()
+    delete_unknown_directory()
+
     for json in database:
         digest = get_digest(json)
         title = get_title(json)
@@ -277,7 +279,12 @@ def clean_database():
                 logger.info(f"Clean description: {description} at {title} / {digest} image")
                 json['description'] = ""
 
-            add_image_to_database(json)
+        image_full_path = f"{AppConfig.get_output_dir()}/{json['image_path']}"
+        if not check_file_exists(image_full_path):
+            logger.error(f"{image_full_path} DO NOT EXISTS!")
+            process_image(json)
+
+        add_image_to_database(json)
 
 
 def exists_image(json_image):
@@ -504,6 +511,27 @@ def delete_directory(directory):
     except Exception as e:
         logger.error(f"Error deleting the directory {directory}: {e}")
         raise e
+
+
+def delete_unknown_directory():
+    import logging
+    import os
+    import shutil
+
+    logger = logging.getLogger("delete_unknown_directory")
+    image_path = f"Unknown"
+    path = f"{AppConfig.get_output_dir()}/{image_path}"
+    logger.info(f"Deleting {path} directory ...")
+
+    try:
+        if os.path.exists(path):
+            shutil.rmtree(path)
+            logger.info(f"Directory '{path}' removed successfully!")
+        else:
+            logger.debug(f"File '{path}' not found!")
+
+    except OSError as e:
+        logger.error(f"Error removing directory: {path}")
 
 
 def delete_unknown_image(image_json):
