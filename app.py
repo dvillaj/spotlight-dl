@@ -1,5 +1,6 @@
 import logging
 import threading
+
 from bottle import Bottle, template, TEMPLATE_PATH, request
 from utils import *
 
@@ -9,54 +10,34 @@ TEMPLATE_PATH.append('./templates')
 
 @app.route('/')
 def index():
-    config = AppConfig()
     images = read_images_database()
-    nmax = min(config.get_images_per_page(), len(images))
+    nmax = min(AppConfig.get_images_per_page(), len(images))
 
-    return template_and_searchterms("Last downloaded images", images, images[:nmax])
+    return template_and_search_terms("Latest downloaded images", len(images), images[:nmax])
 
 
-# Ruta para la búsqueda
 @app.route('/search')
 def search():
-    config = AppConfig()
-    search_term = request.query.get('search-term').strip()
+
+    search_term = request.query.get('search-term').encode('latin1').decode('utf-8').strip()
 
     images = read_images_database()
     image_list = [item for item in images if search_term.lower() in (
             item['title'] + item['description'] + item['hex_digest'] + item['timestamp']).lower()]
 
-    text = f"{len(image_list)} images found for '{search_term}'"
+    text = f"{len(image_list)} images found with '{search_term}' term"
 
-    return template_and_searchterms(text, images, image_list[:config.get_images_per_page()])
-
-
-def template_and_searchterms(text, images, image_list):
-    search_terms = get_links(grouped_terms=["Painting", "Galaxy"])
-
-    for image in image_list:
-        description = ""
-        if 'description' in image:
-            description = image["description"]
-            if image['title'] in description:
-                description = description[len(image['title']) + 2:]
-            if description.strip() == ".":
-                description = ""
-
-        image["short_description"] = description
-
-    return template('index.html', counter=len(images), text=text, imagelist=image_list, search_terms=search_terms)
+    return template_and_search_terms(text, len(images), image_list[:AppConfig.get_images_per_page()])
 
 
 @app.route('/random')
 def index():
     from random import sample
 
-    config = AppConfig()
     images = read_images_database()
-    nmax = min(config.get_images_per_page(), len(images))
+    nmax = min(AppConfig.get_images_per_page(), len(images))
 
-    return template_and_searchterms("Some random images", images, sample(images, nmax))
+    return template_and_search_terms("Some random images", len(images), sample(images, nmax))
 
 @app.route('/upload')
 def index():
@@ -75,14 +56,13 @@ def download():
     import tempfile
     import time
 
-    config = AppConfig()
     tmp_dir = tempfile.mkdtemp()
 
     timestamp = time.strftime("%Y%m%d%H%M%S")
     filename = f"images-{timestamp}.zip"
     filepath = f'{tmp_dir}/{filename}'
 
-    compress_directory(config.get_output_dir(), filepath)
+    compress_directory(AppConfig.get_output_dir(), filepath)
 
     response.headers['Content-Type'] = 'application/octet-stream'
     response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
@@ -94,8 +74,6 @@ def upload():
     from bottle import request
     import os
     import tempfile
-
-    config = AppConfig()
 
     logger = logging.getLogger("uploadFile")
     upload = request.files.get('filename')
@@ -112,11 +90,11 @@ def upload():
         delete_directory(tmp_dir)
 
         text = f'{len(inserted_images)} new images has been uploaded'
-        nmax = min(config.get_images_per_page(), len(inserted_images))
+        nmax = min(AppConfig.get_images_per_page(), len(inserted_images))
 
         images = read_images_database()
 
-        return template_and_searchterms(text, images, inserted_images[:nmax])
+        return template_and_search_terms(text, len(images), inserted_images[:nmax])
 
     else:
         error_message = 'The uploaded file is not a zip file!'
@@ -124,11 +102,11 @@ def upload():
 
 
 def run_server():
-    config = AppConfig()
-    app.run(host='0.0.0.0', port=config.get_port())
+    app.run(host='0.0.0.0', port=AppConfig.get_port())
 
 
 if __name__ == '__main__':
+    AppConfig()
     conf_logging()
     logger = logging.getLogger("app")
 

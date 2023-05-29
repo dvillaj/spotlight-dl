@@ -13,17 +13,17 @@ class AppConfig:
         if not AppConfig.countries:
             AppConfig.countries = self.get_countries()
 
-    def get_port(self):
-
+    @staticmethod
+    def get_port():
         return AppConfig.config['general']['port']
 
-
-    def get_url(self, country):
+    @staticmethod
+    def get_url(country):
         from datetime import datetime
 
         url = AppConfig.config['spotlight']['url']
         pid = AppConfig.config['spotlight']['pid']
-        language = self.get_language()
+        language = AppConfig.get_language()
 
         return (url
                 .replace("${pid}", str(pid))
@@ -32,10 +32,12 @@ class AppConfig:
                 .replace("${language}", language)
                 )
 
-    def get_country_name(self, code):
+    @staticmethod
+    def get_country_name(code):
         return AppConfig.countries[code.upper()]
 
-    def get_country(self):
+    @staticmethod
+    def get_country():
         import os
 
         try:
@@ -46,12 +48,12 @@ class AppConfig:
                 country = AppConfig.config['spotlight']['country'].upper()
 
             if country == "RANDOM":
-                return self.get_random_country()
+                return AppConfig.get_random_country()
             else:
                 return country
 
         except KeyError:
-            return self.get_random_country()
+            return AppConfig.get_random_country()
 
     @staticmethod
     def get_random_country():
@@ -59,7 +61,8 @@ class AppConfig:
         country_keys = list(AppConfig.countries.keys())
         return random.choice(country_keys)
 
-    def get_language(self):
+    @staticmethod
+    def get_language():
         import os
 
         env_language = os.getenv('LANGUAGE')
@@ -68,7 +71,8 @@ class AppConfig:
         else:
             return AppConfig.config['spotlight']['language']
 
-    def get_images_per_page(self):
+    @staticmethod
+    def get_images_per_page():
         import os
 
         env_images = os.getenv('IMAGES_PER_PAGE')
@@ -77,10 +81,12 @@ class AppConfig:
         else:
             return AppConfig.config['general']['imagesPerPage']
 
-    def get_json_filename(self):
+    @staticmethod
+    def get_json_filename():
         return AppConfig.config['general']['json.filename']
 
-    def get_output_dir(self):
+    @staticmethod
+    def get_output_dir():
         import os
 
         output_dir = os.getenv('OUTPUT_DIR')
@@ -89,7 +95,8 @@ class AppConfig:
         else:
             return AppConfig.config['general']['output.dir']
 
-    def get_sleep_time(self):
+    @staticmethod
+    def get_sleep_time():
         import os
 
         sleep_time = os.getenv('SLEEP_TIME')
@@ -98,7 +105,8 @@ class AppConfig:
         else:
             return int(AppConfig.config['general']['sleep.time'])
 
-    def get_initial_sleep(self):
+    @staticmethod
+    def get_initial_sleep():
         import os
 
         sleep_time = os.getenv('INITIAL_SLEEP')
@@ -152,9 +160,8 @@ def get_images_data():
     import requests
     import json
 
-    config = AppConfig()
-    country = config.get_country()
-    data = requests.get(config.get_url(country)).json()
+    country = AppConfig.get_country()
+    data = requests.get(AppConfig.get_url(country)).json()
 
     if 'items' in data['batchrsp']:
         for i, items in enumerate(data['batchrsp']['items']):
@@ -181,7 +188,7 @@ def get_images_data():
                    "title": title, "description": description, "copyright": copyright_text,
                    "hs1_title": hs1_title, "hs2_title": hs2_title, "hs1_cta_text": hs1_cta_text,
                    "hs2_cta_text": hs2_cta_text,
-                   "country": country, "country_name": config.get_country_name(country)
+                   "country": country, "country_name": AppConfig.get_country_name(country)
                    }
 
 
@@ -219,15 +226,13 @@ def save_image(image_json):
 def make_image_directory(image_json):
     import os
 
-    config = AppConfig()
-
     dirs = image_json['title'].split(",")
     dirs.reverse()
     dirs = [s.strip() for s in dirs]
     dirs = "/".join(dirs)
 
     image_path = f"{dirs}/{image_json['hex_digest']}.jpg"
-    full_name = f"{config.get_output_dir()}/{image_path}"
+    full_name = f"{AppConfig.get_output_dir()}/{image_path}"
 
     if not os.path.exists(os.path.dirname(full_name)):
         os.makedirs(os.path.dirname(full_name))
@@ -240,19 +245,30 @@ def get_digest(image_json):
     return image_json['hex_digest']
 
 
-def exists_image(digest):
+def get_title(image_json):
+    return image_json['title']
+
+
+def exists_image(json_image):
     import logging
     logger = logging.getLogger("exists_image")
     database = read_images_database()
 
-    logger.debug(f"Searching {digest} info {len(database)} images ...")
+    digest = get_digest(json_image)
+    image_title = get_title(json_image)
+    logger.debug(f"Searching for {digest} / {image_title} in {len(database)} images database ...")
 
     for json in database:
-        if 'hex_digest' in json and json['hex_digest'] == digest:
-            logger.debug("Found!")
-            return True
+        database_digest = json['hex_digest']
+        database_title = json['title']
+        if database_digest == digest:
+            if database_title == "Unknown" and database_title != image_title:
+                logger.info(f"Upgrading a Unknown image: {image_title} / {digest}")
+            else:
+                logger.debug(f"Image {digest} found!")
+                return True
 
-    logger.debug("Not found!")
+    logger.debug(f"Image {image_title} / {digest} not found!")
     return False
 
 
@@ -277,8 +293,7 @@ def sleep():
 
     logger = logging.getLogger("sleep")
 
-    config = AppConfig()
-    seconds = config.get_sleep_time()
+    seconds = AppConfig.get_sleep_time()
 
     logger.info(f"Sleeping {seconds} seconds ...")
     time.sleep(seconds)
@@ -293,10 +308,9 @@ def read_images_database(locationPath=None):
     import json
     import os
 
-    config = AppConfig()
     json_database = get_json_database_name(locationPath)
 
-    images_json = []
+    images_json = {}
 
     if os.path.isfile(json_database):
         with open(json_database, 'r') as archivo_jsonl:
@@ -310,11 +324,13 @@ def read_images_database(locationPath=None):
                     json_line['country'] = "Unknown"
 
                 if 'country_name' not in json_line:
-                    json_line['country_name'] = config.get_country_name(json_line['country'])
+                    json_line['country_name'] = AppConfig.get_country_name(json_line['country'])
 
-                images_json.append(json_line)
+                hex_digest = json_line['hex_digest']
+                images_json[hex_digest] = json_line
 
-    return sorted(images_json, reverse=True, key=lambda x: datetime.strptime(x['timestamp'], '%Y-%m-%dT%H:%M:%S.%f'))
+    return sorted([images_json[key] for key in images_json], reverse=True,
+        key=lambda x: datetime.strptime(x['timestamp'], '%Y-%m-%dT%H:%M:%S.%f'))
 
 
 def get_now():
@@ -324,13 +340,12 @@ def get_now():
 
 
 def get_json_database_name(locationPath=None):
-    config = AppConfig()
     if locationPath is None:
-        location = config.get_output_dir()
+        location = AppConfig.get_output_dir()
     else:
         location = locationPath
 
-    return f"{location}/{config.get_json_filename()}"
+    return f"{location}/{AppConfig.get_json_filename()}"
 
 
 def add_image_to_database(image_json):
@@ -357,8 +372,7 @@ def initial_sleep():
 
     logger = logging.getLogger("initial_sleep")
 
-    config = AppConfig()
-    sleep_time = config.get_initial_sleep()
+    sleep_time = AppConfig.get_initial_sleep()
     if sleep_time:
         logger.info(f"Sleeping {sleep_time} seconds ...")
         time.sleep(int(sleep_time))
@@ -369,9 +383,8 @@ def setup_output_dir():
     import logging
 
     logger = logging.getLogger("setup_output_dir")
-    config = AppConfig()
 
-    output_dir = config.get_output_dir()
+    output_dir = AppConfig.get_output_dir()
 
     logger.info(f"Output dir: {output_dir}")
 
@@ -447,12 +460,28 @@ def delete_directory(directory):
         raise e
 
 
+def delete_unknown_image(image_json):
+    import logging
+    import os
+
+    logger = logging.getLogger("delete_unknown_image")
+    image_path = f"Unknown/{image_json['hex_digest']}.jpg"
+    path = f"{AppConfig.get_output_dir()}/{image_path}"
+
+    if os.path.exists(path):
+        os.remove(path)
+        logger.info(f"File '{path}' removed successfully!")
+    else:
+        logger.debug(f"File '{path}' not found!")
+
+
 def process_image(image_json):
     import logging
 
     logger = logging.getLogger("process_image")
     download_image(image_json)
-    if not exists_image(get_digest(image_json)):
+    if not exists_image(image_json):
+        delete_unknown_image(image_json)
         save_image(image_json)
         tag_image(image_json)
 
@@ -476,7 +505,7 @@ def insert_images_from_backup(backup_dir):
     inserted_images = []
     for image in images:
         logger.debug(json.dumps(image, indent=3))
-        if not exists_image(get_digest(image)):
+        if not exists_image(image):
             logger.info(f"Adding image: {image['title']}")
 
             from_path = f"{backup_dir}/{image['image_path']}"
@@ -509,8 +538,7 @@ def get_file_count(directory):
 def get_links(grouped_terms=[]):
     import os
 
-    config = AppConfig()
-    images_dir = config.get_output_dir()
+    images_dir = AppConfig.get_output_dir()
 
     subdirectories = []
     term_counts = {term: 0 for term in grouped_terms}
@@ -533,4 +561,19 @@ def get_links(grouped_terms=[]):
     return sorted(subdirectories, key=lambda x: x[1], reverse=True)
 
 
+def template_and_search_terms(text, counter, image_list):
+    from bottle import template
+    search_terms = get_links(grouped_terms=["Painting", "Galaxy"])
 
+    for image in image_list:
+        description = ""
+        if 'description' in image:
+            description = image["description"]
+            if image['title'] in description:
+                description = description[len(image['title']) + 2:]
+            if description.strip() == ".":
+                description = ""
+
+        image["short_description"] = description
+
+    return template('index.html', counter=counter, text=text, imagelist=image_list, search_terms=search_terms)
