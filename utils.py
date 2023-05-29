@@ -263,6 +263,9 @@ def get_title(image_json):
     return image_json['title']
 
 
+def get_timestamp(image_json):
+    return image_json['timestamp']
+
 def get_description(image_json):
     return image_json['description']
 
@@ -281,6 +284,7 @@ def clean_database():
         add = True
         digest = get_digest(json)
         title = get_title(json)
+        timestamp = get_timestamp(json)
         description = get_description(json)
         for ad_text in AppConfig.get_ad():
             if ad_text in description:
@@ -294,7 +298,7 @@ def clean_database():
             add = process_image(json)
 
         if add:
-            add_image_to_database(json, json['timestamp'])
+            add_image_to_database(json, timestamp)
 
 
 def exists_image(json_image):
