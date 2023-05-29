@@ -22,7 +22,8 @@ def search():
     search_term = request.query.get('search-term').encode('latin1').decode('utf-8').strip()
 
     image_list = search_term_database(search_term)
-    text = f"{len(image_list)} images found with '{search_term}' term"
+    len_images = len(image_list)
+    text = f"{len_images} {'images' if len_images != 1 else 'image'} found with '{search_term}' term"
 
     return template_and_search_terms(text, image_list[:AppConfig.get_images_per_page()])
 

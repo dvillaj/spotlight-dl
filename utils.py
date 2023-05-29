@@ -164,7 +164,7 @@ def get_images_data():
     import json
     import logging
 
-    logger = logging.getLogger("clean_database")
+    logger = logging.getLogger("get_images_data")
     try:
 
         country = AppConfig.get_country()
@@ -270,7 +270,7 @@ def get_description(image_json):
 def clean_database():
     import logging
     logger = logging.getLogger("clean_database")
-    database = read_images_database()
+    database = read_images_database()[::-1]
 
     logger.debug(f"Clean database {get_json_database_name()} ...")
 
@@ -294,7 +294,7 @@ def clean_database():
             add = process_image(json)
 
         if add:
-            add_image_to_database(json)
+            add_image_to_database(json, json['timestamp'])
 
 
 def exists_image(json_image):
@@ -411,7 +411,7 @@ def remove_database():
         logger.info(f"Removing database: {database_name}")
 
 
-def add_image_to_database(image_json):
+def add_image_to_database(image_json, timestamp=None):
     import json
     import logging
 
@@ -421,7 +421,10 @@ def add_image_to_database(image_json):
     if 'image_data' in image_json:
         del image_json['image_data']
 
-    image_json['timestamp'] = get_now()
+    if not timestamp:
+        timestamp = get_now()
+
+    image_json['timestamp'] = timestamp
     with open(json_database, 'a') as file:
         file.write(json.dumps(image_json))
         file.write("\n")
