@@ -1,5 +1,4 @@
 class AppConfig:
-
     config = None
     countries = None
 
@@ -35,6 +34,10 @@ class AppConfig:
     @staticmethod
     def get_country_name(code):
         return AppConfig.countries[code.upper()]
+
+    @staticmethod
+    def get_ad():
+        return AppConfig.config['ad']
 
     @staticmethod
     def get_country():
@@ -180,9 +183,13 @@ def get_images_data():
             hs2_cta_text = get_text(mi_diccionario, 'hs2_cta_text')
             copyright_text = get_text(mi_diccionario, 'copyright_text')
 
-            description = f"{title}. {join_lines(hs1_title, hs1_cta_text)}. {join_lines(hs2_title, hs2_cta_text)}"
-            if "Microsoft" in description or "AI" in description:
-                description = title
+            description = f"{join_lines(hs1_title, hs1_cta_text)}. {join_lines(hs2_title, hs2_cta_text)}"
+            if description.strip() == ".":
+                description = ""
+
+            for ad_text in AppConfig.get_ad():
+                if ad_text in description:
+                    description = ""
 
             yield {"image_url_landscape": image_url_landscape, "image_url_portrait": image_url_portrait,
                    "title": title, "description": description, "copyright": copyright_text,
@@ -249,6 +256,30 @@ def get_title(image_json):
     return image_json['title']
 
 
+def get_description(image_json):
+    return image_json['description']
+
+
+def clean_database():
+    import logging
+    logger = logging.getLogger("clean_database")
+    database = read_images_database()
+
+    logger.debug(f"Clean database {get_json_database_name()} ...")
+
+    remove_database()
+    for json in database:
+        digest = get_digest(json)
+        title = get_title(json)
+        description = get_description(json)
+        for ad_text in AppConfig.get_ad():
+            if ad_text in description:
+                logger.info(f"Clean description: {description} at {title} / {digest} image")
+                json['description'] = ""
+
+            add_image_to_database(json)
+
+
 def exists_image(json_image):
     import logging
     logger = logging.getLogger("exists_image")
@@ -256,14 +287,17 @@ def exists_image(json_image):
 
     digest = get_digest(json_image)
     image_title = get_title(json_image)
+    image_description = get_description(json_image)
     logger.debug(f"Searching for {digest} / {image_title} in {len(database)} images database ...")
 
     for json in database:
-        database_digest = json['hex_digest']
-        database_title = json['title']
+        database_digest = get_digest(json)
+        database_title = get_title(json)
+        database_description = get_description(json)
         if database_digest == digest:
-            if database_title == "Unknown" and database_title != image_title:
-                logger.info(f"Upgrading a Unknown image: {image_title} / {digest}")
+            if (database_title == "Unknown" and database_title != image_title or
+                    database_description == "" and image_description != ""):
+                logger.info(f"Upgrading an image: {image_title} / {digest}")
             else:
                 logger.debug(f"Image {digest} found!")
                 return True
@@ -330,7 +364,7 @@ def read_images_database(locationPath=None):
                 images_json[hex_digest] = json_line
 
     return sorted([images_json[key] for key in images_json], reverse=True,
-        key=lambda x: datetime.strptime(x['timestamp'], '%Y-%m-%dT%H:%M:%S.%f'))
+                  key=lambda x: datetime.strptime(x['timestamp'], '%Y-%m-%dT%H:%M:%S.%f'))
 
 
 def get_now():
@@ -346,6 +380,18 @@ def get_json_database_name(locationPath=None):
         location = locationPath
 
     return f"{location}/{AppConfig.get_json_filename()}"
+
+
+def remove_database():
+    import logging
+    import os
+
+    logger = logging.getLogger("remove_database")
+    database_name = get_json_database_name()
+
+    if os.path.exists(database_name):
+        os.remove(database_name)
+        logger.info(f"Removing database: {database_name}")
 
 
 def add_image_to_database(image_json):
@@ -526,7 +572,6 @@ def insert_images_from_backup(backup_dir):
     return inserted_images
 
 
-
 def get_file_count(directory):
     import os
     count = 0
@@ -561,19 +606,15 @@ def get_links(grouped_terms=[]):
     return sorted(subdirectories, key=lambda x: x[1], reverse=True)
 
 
-def template_and_search_terms(text, counter, image_list):
+def template_and_search_terms(text, image_list):
     from bottle import template
+    images = read_images_database()
     search_terms = get_links(grouped_terms=["Painting", "Galaxy"])
 
-    for image in image_list:
-        description = ""
-        if 'description' in image:
-            description = image["description"]
-            if image['title'] in description:
-                description = description[len(image['title']) + 2:]
-            if description.strip() == ".":
-                description = ""
+    return template('index.html', counter=len(images), text=text, imagelist=image_list, search_terms=search_terms)
 
-        image["short_description"] = description
 
-    return template('index.html', counter=counter, text=text, imagelist=image_list, search_terms=search_terms)
+def search_term_database(search_term):
+    images = read_images_database()
+    return [item for item in images if search_term.lower() in (
+            item['title'] + item['description'] + item['hex_digest'] + item['timestamp']).lower()]

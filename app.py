@@ -13,7 +13,7 @@ def index():
     images = read_images_database()
     nmax = min(AppConfig.get_images_per_page(), len(images))
 
-    return template_and_search_terms("Latest downloaded images", len(images), images[:nmax])
+    return template_and_search_terms("Latest downloaded images", images[:nmax])
 
 
 @app.route('/search')
@@ -21,13 +21,10 @@ def search():
 
     search_term = request.query.get('search-term').encode('latin1').decode('utf-8').strip()
 
-    images = read_images_database()
-    image_list = [item for item in images if search_term.lower() in (
-            item['title'] + item['description'] + item['hex_digest'] + item['timestamp']).lower()]
-
+    image_list = search_term_database(search_term)
     text = f"{len(image_list)} images found with '{search_term}' term"
 
-    return template_and_search_terms(text, len(images), image_list[:AppConfig.get_images_per_page()])
+    return template_and_search_terms(text, image_list[:AppConfig.get_images_per_page()])
 
 
 @app.route('/random')
@@ -37,7 +34,8 @@ def index():
     images = read_images_database()
     nmax = min(AppConfig.get_images_per_page(), len(images))
 
-    return template_and_search_terms("Some random images", len(images), sample(images, nmax))
+    return template_and_search_terms("Some random images", sample(images, nmax))
+
 
 @app.route('/upload')
 def index():
@@ -92,9 +90,7 @@ def upload():
         text = f'{len(inserted_images)} new images has been uploaded'
         nmax = min(AppConfig.get_images_per_page(), len(inserted_images))
 
-        images = read_images_database()
-
-        return template_and_search_terms(text, len(images), inserted_images[:nmax])
+        return template_and_search_terms(text, inserted_images[:nmax])
 
     else:
         error_message = 'The uploaded file is not a zip file!'
@@ -111,6 +107,7 @@ if __name__ == '__main__':
     logger = logging.getLogger("app")
 
     logger.info("Starting ...")
+    clean_database()
 
     server_thread = threading.Thread(target=run_server)
     server_thread.start()

@@ -11,3 +11,10 @@ general:
   initial.sleep.time: 0
   imagesPerPage: 15
   json.filename: images_database.jsonl
+
+ad:
+  - Microsoft
+  - AI
+  - XP League
+  - Meet the creators
+  - Bing
