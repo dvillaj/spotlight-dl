@@ -271,6 +271,7 @@ def clean_database():
     delete_unknown_directory()
 
     for json in database:
+        add = True
         digest = get_digest(json)
         title = get_title(json)
         description = get_description(json)
@@ -280,11 +281,13 @@ def clean_database():
                 json['description'] = ""
 
         image_full_path = f"{AppConfig.get_output_dir()}/{json['image_path']}"
+
         if not check_file_exists(image_full_path):
             logger.error(f"{image_full_path} DO NOT EXISTS!")
-            process_image(json)
+            add = process_image(json)
 
-        add_image_to_database(json)
+        if add:
+            add_image_to_database(json)
 
 
 def exists_image(json_image):
@@ -553,16 +556,20 @@ def process_image(image_json):
     import logging
 
     logger = logging.getLogger("process_image")
-    download_image(image_json)
-    if not exists_image(image_json):
-        delete_unknown_image(image_json)
-        save_image(image_json)
-        tag_image(image_json)
+    try:
+        download_image(image_json)
+        if not exists_image(image_json):
+            delete_unknown_image(image_json)
+            save_image(image_json)
+            tag_image(image_json)
 
-        add_image_to_database(image_json)
+            add_image_to_database(image_json)
 
-        logger.info(f"Downloaded {image_json['title']} into {image_json['image_full_path']} ...")
-        return True
+            logger.info(f"Downloaded {image_json['title']} into {image_json['image_full_path']} ...")
+            return True
+
+    except Exception as error:
+        logger.error(f"Error processing image {image_json['title']}: {error} ")
 
     return False
 
