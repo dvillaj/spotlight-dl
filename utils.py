@@ -162,41 +162,48 @@ def join_lines(line1_arg, line2_arg):
 def get_images_data():
     import requests
     import json
+    import logging
 
-    country = AppConfig.get_country()
-    data = requests.get(AppConfig.get_url(country)).json()
+    logger = logging.getLogger("clean_database")
+    try:
 
-    if 'items' in data['batchrsp']:
-        for i, items in enumerate(data['batchrsp']['items']):
-            mi_diccionario = json.loads(items['item'])['ad']
+        country = AppConfig.get_country()
+        data = requests.get(AppConfig.get_url(country)).json()
 
-            image_url_landscape = mi_diccionario['image_fullscreen_001_landscape']['u']
-            image_url_portrait = mi_diccionario['image_fullscreen_001_portrait']['u']
-            title = get_text(mi_diccionario, 'title_text')
+        if 'items' in data['batchrsp']:
+            for i, items in enumerate(data['batchrsp']['items']):
+                mi_diccionario = json.loads(items['item'])['ad']
 
-            if not title:
-                title = "Unknown"
+                image_url_landscape = mi_diccionario['image_fullscreen_001_landscape']['u']
+                image_url_portrait = mi_diccionario['image_fullscreen_001_portrait']['u']
+                title = get_text(mi_diccionario, 'title_text')
 
-            hs1_title = get_text(mi_diccionario, 'hs1_title_text')
-            hs2_title = get_text(mi_diccionario, 'hs2_title_text')
-            hs1_cta_text = get_text(mi_diccionario, 'hs1_cta_text')
-            hs2_cta_text = get_text(mi_diccionario, 'hs2_cta_text')
-            copyright_text = get_text(mi_diccionario, 'copyright_text')
+                if not title:
+                    title = "Unknown"
 
-            description = f"{join_lines(hs1_title, hs1_cta_text)}. {join_lines(hs2_title, hs2_cta_text)}"
-            if description.strip() == ".":
-                description = ""
+                hs1_title = get_text(mi_diccionario, 'hs1_title_text')
+                hs2_title = get_text(mi_diccionario, 'hs2_title_text')
+                hs1_cta_text = get_text(mi_diccionario, 'hs1_cta_text')
+                hs2_cta_text = get_text(mi_diccionario, 'hs2_cta_text')
+                copyright_text = get_text(mi_diccionario, 'copyright_text')
 
-            for ad_text in AppConfig.get_ad():
-                if ad_text in description:
+                description = f"{join_lines(hs1_title, hs1_cta_text)}. {join_lines(hs2_title, hs2_cta_text)}"
+                if description.strip() == ".":
                     description = ""
 
-            yield {"image_url_landscape": image_url_landscape, "image_url_portrait": image_url_portrait,
-                   "title": title, "description": description, "copyright": copyright_text,
-                   "hs1_title": hs1_title, "hs2_title": hs2_title, "hs1_cta_text": hs1_cta_text,
-                   "hs2_cta_text": hs2_cta_text,
-                   "country": country, "country_name": AppConfig.get_country_name(country)
-                   }
+                for ad_text in AppConfig.get_ad():
+                    if ad_text in description:
+                        description = ""
+
+                yield {"image_url_landscape": image_url_landscape, "image_url_portrait": image_url_portrait,
+                       "title": title, "description": description, "copyright": copyright_text,
+                       "hs1_title": hs1_title, "hs2_title": hs2_title, "hs1_cta_text": hs1_cta_text,
+                       "hs2_cta_text": hs2_cta_text,
+                       "country": country, "country_name": AppConfig.get_country_name(country)
+                       }
+
+    except Exception as error:
+        logger.error(f"Error requesting images: {error}")
 
 
 def get_text(dictionary, key):
