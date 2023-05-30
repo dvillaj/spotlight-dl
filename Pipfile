@@ -10,6 +10,7 @@ requests = "*"
 pyyaml = "*"
 flask = "*"
 bottle = "*"
+opencv-python = "*"
 
 [dev-packages]
 

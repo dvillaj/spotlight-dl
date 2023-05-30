@@ -163,6 +163,7 @@ def get_images_data():
     import requests
     import json
     import logging
+    import traceback
 
     logger = logging.getLogger("get_images_data")
     try:
@@ -204,6 +205,7 @@ def get_images_data():
 
     except Exception as error:
         logger.error(f"Error requesting images: {error}")
+        traceback.print_exc()
 
 
 def get_text(dictionary, key):
@@ -226,7 +228,6 @@ def download_image(image_json):
 
     image_json['hex_digest'] = hex_digest
     image_json['image_data'] = image_data
-
 
 def save_image(image_json):
     from PIL import Image
@@ -273,7 +274,7 @@ def get_description(image_json):
 def clean_database():
     import logging
     logger = logging.getLogger("clean_database")
-    database = read_images_database()[::-1]
+    database = read_images_database()
 
     logger.debug(f"Clean database {get_json_database_name()} ...")
 
@@ -284,7 +285,6 @@ def clean_database():
         add = True
         digest = get_digest(json)
         title = get_title(json)
-        timestamp = get_timestamp(json)
         description = get_description(json)
         for ad_text in AppConfig.get_ad():
             if ad_text in description:
@@ -298,7 +298,7 @@ def clean_database():
             add = process_image(json)
 
         if add:
-            add_image_to_database(json, timestamp)
+            add_image_to_database(json)
 
 
 def exists_image(json_image):
@@ -415,7 +415,7 @@ def remove_database():
         logger.info(f"Removing database: {database_name}")
 
 
-def add_image_to_database(image_json, timestamp=None):
+def add_image_to_database(image_json):
     import json
     import logging
 
@@ -425,10 +425,9 @@ def add_image_to_database(image_json, timestamp=None):
     if 'image_data' in image_json:
         del image_json['image_data']
 
-    if not timestamp:
-        timestamp = get_now()
+    if not 'timestamp' in image_json:
+        image_json['timestamp'] = get_now()
 
-    image_json['timestamp'] = timestamp
     with open(json_database, 'a') as file:
         file.write(json.dumps(image_json))
         file.write("\n")
@@ -568,6 +567,7 @@ def delete_unknown_image(image_json):
 
 def process_image(image_json):
     import logging
+    import traceback
 
     logger = logging.getLogger("process_image")
     try:
@@ -584,6 +584,7 @@ def process_image(image_json):
 
     except Exception as error:
         logger.error(f"Error processing image {image_json['title']}: {error} ")
+        traceback.print_exc()
 
     return False
 
