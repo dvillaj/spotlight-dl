@@ -589,7 +589,7 @@ def process_image(image_json):
     return False
 
 
-def insert_images_from_backup(backup_dir):
+def insert_images_from_backup(backup_dir, id_new):
     import logging
     import json
 
@@ -598,7 +598,6 @@ def insert_images_from_backup(backup_dir):
     logger.info(f"Backup Dir: {backup_dir}")
     images = read_images_database(backup_dir)
 
-    inserted_images = []
     for image in images:
         logger.debug(json.dumps(image, indent=3))
         if not exists_image(image):
@@ -614,12 +613,8 @@ def insert_images_from_backup(backup_dir):
 
                 copy_file(from_path, image['image_full_path'])
                 image['timestamp'] = get_now()
+                image['id-new'] = id_new
                 add_image_to_database(image)
-
-                inserted_images.append(image)
-
-    logger.info(f"Inserted {len(inserted_images)} of {len(images)} images!")
-    return inserted_images
 
 
 def get_file_count(directory):
@@ -656,15 +651,62 @@ def get_links(grouped_terms=[]):
     return sorted(subdirectories, key=lambda x: x[1], reverse=True)
 
 
-def template_and_search_terms(text, image_list):
-    from bottle import template
+def template_and_search_terms(text, image_list, href):
+    from bottle import template, request
+    import math
+
     images = read_images_database()
     search_terms = get_links(grouped_terms=["Painting", "Galaxy"])
 
-    return template('index.html', counter=len(images), text=text, imagelist=image_list, search_terms=search_terms)
+    current_page = int(request.query.get('page', 1))
+    per_page = AppConfig.get_images_per_page()
+    start_index = (current_page - 1) * per_page
+    end_index = start_index + per_page
+
+    total_pages = math.ceil(len(image_list) / per_page)
+    pages_to_show = min(8, total_pages)
+    start_page = max(1, current_page - (pages_to_show // 2))
+    end_page = start_page + pages_to_show - 1
+    if end_page > total_pages:
+        end_page = total_pages
+        start_page = max(1, end_page - pages_to_show + 1)
+
+    ellipsis_before = start_page > 1
+    ellipsis_after = end_page < total_pages
+
+    total_images = len(images)
+    href = href + ("&" if "?" in href else "?")
+
+    return template('index.html',
+                    counter= total_images,
+                    text=text,
+                    imagelist=image_list[start_index:end_index],
+                    search_terms=search_terms,
+                    current_page=current_page,
+                    total_pages=total_pages,
+                    start_page=start_page,
+                    end_page=end_page,
+                    ellipsis_before=ellipsis_before,
+                    ellipsis_after=ellipsis_after,
+                    href=href)
 
 
 def search_term_database(search_term):
     images = read_images_database()
     return [item for item in images if search_term.lower() in (
             item['title'] + item['description'] + item['hex_digest'] + item['timestamp']).lower()]
+
+
+def search_id_database(search_term):
+    images = read_images_database()
+    return [item for item in images if search_term in ("" if "id-new" not in item else item['id-new'])]
+
+
+def generate_id(length=10):
+    import random
+    import hashlib
+
+    seed = random.randint(0, 999999)
+    md5_hash = hashlib.md5()
+    md5_hash.update(str(seed).encode('utf-8'))
+    return md5_hash.hexdigest()[:length]

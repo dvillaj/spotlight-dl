@@ -10,12 +10,11 @@ def run_web_server():
     @app.route('/')
     def index():
         images = read_images_database()
-        nmax = min(config.get_images_per_page(), len(images))
-
-        return template_and_search_terms("Latest downloaded images", images[:nmax])
+        return template_and_search_terms("Latest downloaded images", images, "/")
 
     @app.route('/search')
     def search():
+        from urllib.parse import quote
 
         search_term = request.query.get('search-term').encode('latin1').decode('utf-8').strip()
 
@@ -23,7 +22,7 @@ def run_web_server():
         len_images = len(image_list)
         text = f"{len_images} {'images' if len_images != 1 else 'image'} found with '{search_term}' term"
 
-        return template_and_search_terms(text, image_list[:config.get_images_per_page()])
+        return template_and_search_terms(text, image_list, f"/search?search-term={quote(search_term)}")
 
     @app.route('/random')
     def index():
@@ -32,7 +31,16 @@ def run_web_server():
         images = read_images_database()
         nmax = min(config.get_images_per_page(), len(images))
 
-        return template_and_search_terms("Some random images", sample(images, nmax))
+        return template_and_search_terms("Some random images", sample(images, nmax), "/random")
+
+    @app.route('/new')
+    def index():
+        id_new = request.query.get('id').strip()
+
+        inserted_images = search_id_database(id_new)
+        text = f'{len(inserted_images)} new images has been uploaded'
+
+        return template_and_search_terms(text, inserted_images, f"/new?id={id_new}")
 
     @app.route('/upload')
     def index():
@@ -63,7 +71,7 @@ def run_web_server():
 
     @app.route('/uploadFile', method='POST')
     def upload():
-        from bottle import request
+        from bottle import request, redirect
         import os
         import tempfile
 
@@ -76,15 +84,12 @@ def run_web_server():
             file_path = os.path.join(tmp_dir, filename)
             upload.save(file_path)
 
+            id_new = generate_id()
             decompress_zipfile(file_path, tmp_dir)
-            inserted_images = insert_images_from_backup(tmp_dir)
+            insert_images_from_backup(tmp_dir, id_new)
 
             delete_directory(tmp_dir)
-
-            text = f'{len(inserted_images)} new images has been uploaded'
-            nmax = min(config.get_images_per_page(), len(inserted_images))
-
-            return template_and_search_terms(text, inserted_images[:nmax])
+            redirect(f'/new?id={id_new}')
 
         else:
             error_message = 'The uploaded file is not a zip file!'
@@ -103,7 +108,7 @@ def main():
     logger = logging.getLogger("app")
 
     logger.info("Starting ...")
-    clean_database()
+    #clean_database()
 
     server_process = multiprocessing.Process(target=run_web_server)
     server_process.start()
