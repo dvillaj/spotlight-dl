@@ -108,7 +108,7 @@ def main():
     logger = logging.getLogger("app")
 
     logger.info("Starting ...")
-    #clean_database()
+    clean_database()
 
     server_process = multiprocessing.Process(target=run_web_server)
     server_process.start()

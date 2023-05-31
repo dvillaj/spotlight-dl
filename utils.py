@@ -705,8 +705,10 @@ def search_id_database(search_term):
 def generate_id(length=10):
     import random
     import hashlib
+    import time
 
-    seed = random.randint(0, 999999)
+    current_time = int(time.time())
+    seed = random.randint(0, current_time)
     md5_hash = hashlib.md5()
     md5_hash.update(str(seed).encode('utf-8'))
     return md5_hash.hexdigest()[:length]
