@@ -137,6 +137,7 @@ def main():
     logger = logging.getLogger("app")
 
     logger.info("Starting ...")
+    logger.info(f"Reading database from {AppConfig.get_output_dir()}")
     clean_database()
 
     server_process = multiprocessing.Process(target=run_web_server)
@@ -171,4 +172,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

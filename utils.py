@@ -32,7 +32,7 @@ class AppConfig:
             return url
 
     @staticmethod
-    def get_url(country):
+    def get_spotlight_url(country):
         from datetime import datetime
 
         url = AppConfig.config['spotlight']['url']
@@ -224,7 +224,7 @@ def get_images_data():
     try:
 
         country = AppConfig.get_country()
-        data = requests.get(AppConfig.get_url(country)).json()
+        data = requests.get(AppConfig.get_spotlight_url(country)).json()
 
         if 'items' in data['batchrsp']:
             for i, items in enumerate(data['batchrsp']['items']):
