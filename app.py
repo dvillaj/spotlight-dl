@@ -4,6 +4,7 @@ from utils import *
 
 def run_web_server():
     from bottle import Bottle, template, TEMPLATE_PATH, request
+
     app = Bottle()
     config = init_configuration()
 
@@ -95,6 +96,34 @@ def run_web_server():
             error_message = 'The uploaded file is not a zip file!'
             return template('error.html', error_message=error_message)
 
+    @app.route('/image/<hash>')
+    def get_image(hash):
+        import os
+        from bottle import response
+
+        logger = logging.getLogger("image")
+        images = search_digest_database(hash)
+
+        try:
+            if len(images) == 0:
+                raise Exception("Image not found!")
+
+            image_path = images[0]['image_full_path']
+            logger.info(f"Reading image from {image_path} ...")
+
+            if not os.path.isfile(image_path):
+                raise Exception("Image file not found!")
+
+            response.content_type = 'image/jpeg'
+
+            with open(image_path, 'rb') as f:
+                image_data = f.read()
+
+            return image_data
+
+        except BaseException as e:
+            return template('error.html', error_message=e)
+
     TEMPLATE_PATH.append('./templates')
     app.run(host='0.0.0.0', port=config.get_port())
 
@@ -132,7 +161,7 @@ def main():
             sleep()
             n = n + 1
 
-    except Exception as e:
+    except BaseException as e:
         logger.info(f"Error in main process: {e}")
         traceback.print_exc()
 

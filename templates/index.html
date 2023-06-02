@@ -117,6 +117,49 @@
             </div>
         </div>
         % end
+
+         % if total_pages > 1:
+        <div class="text-center mt-4">
+            <ul class="pagination">
+                % if current_page >  1:
+                    <li class="page-item">
+                        <a class="page-link" href="{{ href }}page={{ current_page - 1 }}">Previous</a>
+                    </li>
+                % end
+
+                % if ellipsis_before:
+                    <li class="page-item disabled">
+                        <a class="page-link">...</a>
+                    </li>
+                % end
+
+                % for page_num in range(start_page, end_page + 1):
+                    % if page_num == current_page:
+                        <li class="page-item active">
+                            <a class="page-link" href="{{ href }}page={{ page_num }}">{{ page_num }}</a>
+                        </li>
+                    % else:
+                        <li class="page-item">
+                            <a class="page-link" href="{{ href }}page={{ page_num }}">{{ page_num }}</a>
+                        </li>
+                    % end
+                % end
+
+                % if ellipsis_after:
+                    <li class="page-item disabled">
+                        <a class="page-link">...</a>
+                    </li>
+                % end
+
+                % if current_page < total_pages:
+                    <li class="page-item">
+                        <a class="page-link" href="{{ href }}page={{ current_page + 1 }}">Next</a>
+                    </li>
+                % end
+            </ul>
+        </div>
+        % end
+
 		<hr>
 
 		<div class="col-md-8">

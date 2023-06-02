@@ -5,6 +5,7 @@ spotlight:
   language: en-US
 
 general:
+  url: http://localhost:8000
   port: 8000
   output.dir: c:/tmp/images
   sleep.time: 3

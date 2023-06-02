@@ -16,6 +16,12 @@
         ]
     },
     "default": {
+        "beaker": {
+            "hashes": [
+                "sha256:57770b40956e6c5cf1d8221dc59519029e470080ed8d3065c4e6ab36ce7e3c81"
+            ],
+            "version": "==1.12.1"
+        },
         "blinker": {
             "hashes": [
                 "sha256:4afd3de66ef3a9f8067559fb7a1cbe555c17dcbe15971b05d1b625c3e7abe213",
@@ -265,7 +271,7 @@
                 "sha256:ecde0f8adef7dfdec993fd54b0f78183051b6580f606111a6d789cd14c61ea0c",
                 "sha256:f21c442fdd2805e91799fbe044a7b999b8571bb0ab0f7850d0cb9641a687092b"
             ],
-            "markers": "python_version >= '3.8'",
+            "markers": "python_version >= '3.10'",
             "version": "==1.24.3"
         },
         "opencv-python": {

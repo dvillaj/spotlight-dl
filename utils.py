@@ -17,6 +17,21 @@ class AppConfig:
         return AppConfig.config['general']['port']
 
     @staticmethod
+    def get_home_url():
+        import os
+
+        env_url = os.getenv('HOME_URL')
+        if env_url:
+            url = env_url.strip()
+        else:
+            url = AppConfig.config['general']['url'].strip()
+
+        if not url.endswith("/"):
+            return url + "/"
+        else:
+            return url
+
+    @staticmethod
     def get_url(country):
         from datetime import datetime
 
@@ -243,7 +258,7 @@ def get_images_data():
                        "country": country, "country_name": AppConfig.get_country_name(country)
                        }
 
-    except Exception as error:
+    except BaseException as error:
         logger.error(f"Error requesting images: {error}")
         traceback.print_exc()
 
@@ -339,6 +354,9 @@ def clean_database():
             process_image(json)
         else:
             add_image_to_database(json)
+
+    insert_images_from_home()
+    check_images_count()
 
 
 def exists_image(json_image):
@@ -535,7 +553,7 @@ def compress_directory(directory_path, output_filename):
                     zipf.write(file_path, arcname)
 
         logger.info(f"Directory '{directory_path}' compressed to '{output_filename}' successfully.")
-    except Exception as e:
+    except BaseException as e:
         logger.error(f"Error compressing directory '{directory_path}': {e}")
         raise e
 
@@ -551,7 +569,7 @@ def decompress_zipfile(archive_path, output_directory):
             zipf.extractall(path=output_directory)
 
         logger.info(f"Archive '{archive_path}' extracted to '{output_directory}' successfully.")
-    except Exception as e:
+    except BaseException as e:
         logger.error(f"Error extracting archive '{archive_path}': {e}")
         raise e
 
@@ -564,7 +582,7 @@ def delete_directory(directory):
     try:
         shutil.rmtree(directory)
         logger.info(f"Directory {directory} and its contents have been successfully deleted.")
-    except Exception as e:
+    except BaseException as e:
         logger.error(f"Error deleting the directory {directory}: {e}")
         raise e
 
@@ -622,7 +640,7 @@ def process_image(image_json):
             logger.info(f"Downloaded {image_json['title']} into {image_json['image_full_path']} ...")
             return True
 
-    except Exception as error:
+    except BaseException as error:
         logger.error(f"Error processing image {image_json['title']}: {error} ")
         traceback.print_exc()
 
@@ -728,6 +746,8 @@ def template_and_search_terms(text, image_list, href):
     total_images = len(images)
     href = href + ("&" if "?" in href else "?")
 
+    base_url = request.urlparts.scheme + "://" + request.urlparts.netloc
+
     return template('index.html',
                     counter=total_images,
                     text=text,
@@ -739,6 +759,7 @@ def template_and_search_terms(text, image_list, href):
                     end_page=end_page,
                     ellipsis_before=ellipsis_before,
                     ellipsis_after=ellipsis_after,
+                    base_url=base_url,
                     href=href)
 
 
@@ -746,6 +767,11 @@ def search_term_database(search_term):
     images = read_images_database()
     return [item for item in images if search_term.lower() in (
             item['title'] + item['description'] + item['hex_digest'] + item['timestamp']).lower()]
+
+
+def search_digest_database(search_term):
+    images = read_images_database()
+    return [item for item in images if search_term == item['hex_digest']]
 
 
 def search_id_database(search_term):
@@ -779,7 +805,7 @@ def send_new_image_email(image, actual_images):
     images = AppConfig.get_notification_images()
 
     if actual_images < images:
-        logger.debug("No enough images to send an email!")
+        logger.info(f"No enough images to send an email {actual_images}/{images}!")
         return
 
     subject = f"A new image has been downloaded from spotlight-dl"
@@ -787,8 +813,10 @@ def send_new_image_email(image, actual_images):
 
     image['time'] = get_time()
     image['actual_images'] = actual_images
+    image['home_url'] = AppConfig.get_home_url()
 
     if passwd:
+        logger.info(f"Sending a notification to {email} ...")
         send_email(email, subject, template, image, email, passwd)
     else:
         logger.info("No password defined for notification, so no message will be send!")
@@ -844,3 +872,73 @@ def send_email(recipient, subject, template_file, variables, sender, password):
 
     # Close the SMTP connection
     smtp_connection.quit()
+
+
+def get_title_from_path(path):
+    clean_path = path.replace(AppConfig.get_output_dir(), "")
+    name_file = clean_path.split("/")[-1]
+
+    folders = clean_path.replace(f"/{name_file}", "").split("/")[1:]
+    return ", ".join(folders[::-1])
+
+
+def get_jpg_files(directory):
+    import os
+    jpg_files = []
+
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            if file.endswith(".jpg"):
+                file_path = os.path.join(root, file)
+                file_name = os.path.splitext(file)[0]
+                jpg_files.append((file_name.replace(".jpg", ""), file_path))
+
+    return jpg_files
+
+
+def insert_images_from_home():
+    import logging
+
+    logger = logging.getLogger("insert_images_from_home")
+
+    logger.info("Inserting images from home directory")
+
+    images = 0
+    for digest, image_path in get_jpg_files(AppConfig.get_output_dir()):
+        if not search_digest_database(digest):
+
+            image_path = image_path.replace("\\", "/")
+            image_json = {'image_url_landscape': f"./image/{digest}", 'title': get_title_from_path(image_path), 'description': "",
+                     'copyright': "", 'country': "UNKNOWN", 'country_name': AppConfig.get_country_name("UNKNOWN"),
+                     'hex_digest': digest, 'image_path': image_path.replace(f"{AppConfig.get_output_dir()}/", ""),
+                     'image_full_path': image_path, 'timestamp': get_now()}
+
+            logger.debug(f"JSON = {image_json}")
+            add_image_to_database(image_json)
+            images = images + 1
+
+    logger.info(f"{images} images has been inserted from home dir!")
+
+
+def check_images_count():
+    import logging
+
+    logger = logging.getLogger("check_images_count")
+
+    logger.info("Checking images from disk...")
+
+    images_from_disk = get_jpg_files(AppConfig.get_output_dir())
+    len_images_from_disk = len(images_from_disk)
+    images = read_images_database()
+    len_images = len(images)
+
+    if len_images != len_images_from_disk:
+        logger.error(f"Images from disk ({len_images_from_disk}) are not equal than database ({len_images}) !!!")
+        if len_images_from_disk > len_images:
+            for digest, image_path in images_from_disk:
+                images_databases = search_digest_database(digest)
+                if not images_databases:
+                    logger.error(f"Image from disk not found in database: {image_path}")
+
+    else:
+        logger.info("Images from disk are equal than database :-)")
