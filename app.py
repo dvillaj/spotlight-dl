@@ -127,6 +127,7 @@ def main():
             for item in get_images_data():
                 if process_image(item):
                     images = images + 1
+                    send_new_image_email(item, images)
 
             sleep()
             n = n + 1

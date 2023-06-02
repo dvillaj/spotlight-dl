@@ -13,6 +13,7 @@ general:
   json.filename: images_database.jsonl
 
 notification:
+  images: 500
   email: dvillaj@gmail.com
 
 ad:

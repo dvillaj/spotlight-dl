@@ -65,6 +65,16 @@ class AppConfig:
         return random.choice(country_keys)
 
     @staticmethod
+    def get_notification_images():
+        import os
+
+        env_images = os.getenv('NOTIFICATION_IMAGES')
+        if env_images:
+            return int(env_images)
+        else:
+            return AppConfig.config['notification']['images']
+
+    @staticmethod
     def get_notification_email():
         import os
 
@@ -72,7 +82,10 @@ class AppConfig:
         if env_email:
             return env_email
         else:
-            return AppConfig.config['notification']['email']
+            try:
+                return AppConfig.config['notification']['email']
+            except:
+                return ""
 
     @staticmethod
     def get_notification_password():
@@ -82,8 +95,10 @@ class AppConfig:
         if env_password:
             return env_password
         else:
-            if 'password' in AppConfig.config['notification']:
+            try:
                 return AppConfig.config['notification']['password']
+            except:
+                return ""
 
     @staticmethod
     def get_language():
@@ -254,6 +269,7 @@ def download_image(image_json):
     image_json['hex_digest'] = hex_digest
     image_json['image_data'] = image_data
 
+
 def save_image(image_json):
     from PIL import Image
 
@@ -291,6 +307,7 @@ def get_title(image_json):
 
 def get_timestamp(image_json):
     return image_json['timestamp']
+
 
 def get_description(image_json):
     return image_json['description']
@@ -601,7 +618,6 @@ def process_image(image_json):
             tag_image(image_json)
 
             add_image_to_database(image_json)
-            send_new_image_email(image_json)
 
             logger.info(f"Downloaded {image_json['title']} into {image_json['image_full_path']} ...")
             return True
@@ -647,6 +663,7 @@ def get_file_count(directory):
     for root, dirs, files in os.walk(directory):
         count += len(files)
     return count
+
 
 def get_file_date(directory):
     import os
@@ -712,7 +729,7 @@ def template_and_search_terms(text, image_list, href):
     href = href + ("&" if "?" in href else "?")
 
     return template('index.html',
-                    counter= total_images,
+                    counter=total_images,
                     text=text,
                     imagelist=image_list[start_index:end_index],
                     search_terms=search_terms,
@@ -752,17 +769,24 @@ def get_mail_template(file):
     return f"templates/{file}.html"
 
 
-def send_new_image_email(image):
+def send_new_image_email(image, actual_images):
     import logging
 
     logger = logging.getLogger("send_new_image_email")
 
     email = AppConfig.get_notification_email()
     passwd = AppConfig.get_notification_password()
-    subject = "A new image has been downloaded from spotlight-dl"
+    images = AppConfig.get_notification_images()
+
+    if actual_images < images:
+        logger.debug("No enough images to send an email!")
+        return
+
+    subject = f"A new image has been downloaded from spotlight-dl"
     template = get_mail_template("new-imagen-mail")
 
     image['time'] = get_time()
+    image['actual_images'] = actual_images
 
     if passwd:
         send_email(email, subject, template, image, email, passwd)
