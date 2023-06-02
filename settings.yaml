@@ -12,6 +12,9 @@ general:
   imagesPerPage: 10
   json.filename: images_database.jsonl
 
+notification:
+  email: dvillaj@gmail.com
+
 ad:
   - Microsoft
   - AI

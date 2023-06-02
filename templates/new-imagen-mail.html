@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>A new spotlight image is available!</title>
+</head>
+<body>
+    {% if title != "Unknown" %}
+    <h1>{{title}}</h1>
+    {% else %}
+    <h1>Newly Downloaded Image</h1>
+    {% endif %}
+
+    <p>A new image has been downloaded at {{time}}</p>
+
+    <img src="{{image_url_landscape}}" alt="New Image" width="500" height="auto">
+
+    {% if description %}
+    <p>{{description | replace('.', '.<br>')}}</p>
+    {% endif %}
+
+    {% if copyright %}
+    <p>{{copyright}}</p>
+    {% endif %}
+</body>
+</html>

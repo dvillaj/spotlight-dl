@@ -65,6 +65,27 @@ class AppConfig:
         return random.choice(country_keys)
 
     @staticmethod
+    def get_notification_email():
+        import os
+
+        env_email = os.getenv('NOTIFICATION_EMAIL')
+        if env_email:
+            return env_email
+        else:
+            return AppConfig.config['notification']['email']
+
+    @staticmethod
+    def get_notification_password():
+        import os
+
+        env_password = os.getenv('NOTIFICATION_PASSWORD')
+        if env_password:
+            return env_password
+        else:
+            if 'password' in AppConfig.config['notification']:
+                return AppConfig.config['notification']['password']
+
+    @staticmethod
     def get_language():
         import os
 
@@ -130,6 +151,10 @@ def check_file_exists(file: str) -> bool:
     from os.path import exists
 
     return exists(file)
+
+
+def init_configuration():
+    return AppConfig()
 
 
 def conf_logging(config_file: str = 'logging.ini'):
@@ -276,13 +301,12 @@ def clean_database():
     logger = logging.getLogger("clean_database")
     database = read_images_database()
 
-    logger.debug(f"Clean database {get_json_database_name()} ...")
+    logger.info(f"Cleaning {len(database)} items of {get_json_database_name()} database ...")
 
     remove_database()
     delete_unknown_directory()
 
     for json in database:
-        add = True
         digest = get_digest(json)
         title = get_title(json)
         description = get_description(json)
@@ -295,9 +319,8 @@ def clean_database():
 
         if not check_file_exists(image_full_path):
             logger.error(f"{image_full_path} DO NOT EXISTS!")
-            add = process_image(json)
-
-        if add:
+            process_image(json)
+        else:
             add_image_to_database(json)
 
 
@@ -578,6 +601,7 @@ def process_image(image_json):
             tag_image(image_json)
 
             add_image_to_database(image_json)
+            send_new_image_email(image_json)
 
             logger.info(f"Downloaded {image_json['title']} into {image_json['image_full_path']} ...")
             return True
@@ -624,6 +648,13 @@ def get_file_count(directory):
         count += len(files)
     return count
 
+def get_file_date(directory):
+    import os
+    import datetime
+
+    date = os.path.getctime(directory)
+    return datetime.datetime.fromtimestamp(date)
+
 
 def get_links(grouped_terms=[]):
     import os
@@ -632,6 +663,7 @@ def get_links(grouped_terms=[]):
 
     subdirectories = []
     term_counts = {term: 0 for term in grouped_terms}
+    term_date = {}
 
     for name in os.listdir(images_dir):
         subdir_path = os.path.join(images_dir, name)
@@ -639,16 +671,18 @@ def get_links(grouped_terms=[]):
             for term in grouped_terms:
                 if term.lower() in name.lower():
                     term_counts[term] += get_file_count(subdir_path)
+                    term_date[term] = get_file_date(subdir_path)
                     break
             else:
                 file_count = get_file_count(subdir_path)
-                subdirectories.append((name, file_count))
+                date = get_file_date(subdir_path)
+                subdirectories.append((name, file_count, date))
 
     for term, count in term_counts.items():
         if count:
-            subdirectories.append((term, count))
+            subdirectories.append((term, count, term_date[term]))
 
-    return sorted(subdirectories, key=lambda x: x[1], reverse=True)
+    return sorted(subdirectories, key=lambda x: (x[1], x[2]), reverse=True)
 
 
 def template_and_search_terms(text, image_list, href):
@@ -712,3 +746,77 @@ def generate_id(length=10):
     md5_hash = hashlib.md5()
     md5_hash.update(str(seed).encode('utf-8'))
     return md5_hash.hexdigest()[:length]
+
+
+def get_mail_template(file):
+    return f"templates/{file}.html"
+
+
+def send_new_image_email(image):
+    import logging
+
+    logger = logging.getLogger("send_new_image_email")
+
+    email = AppConfig.get_notification_email()
+    passwd = AppConfig.get_notification_password()
+    subject = "A new image has been downloaded from spotlight-dl"
+    template = get_mail_template("new-imagen-mail")
+
+    image['time'] = get_time()
+
+    if passwd:
+        send_email(email, subject, template, image, email, passwd)
+    else:
+        logger.info("No password defined for notification, so no message will be send!")
+
+
+def get_time():
+    from datetime import datetime
+
+    return datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+
+
+def send_email(recipient, subject, template_file, variables, sender, password):
+    import smtplib
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+    from jinja2 import Environment, FileSystemLoader
+
+    # Set up email parameters
+    email_sender = sender
+    email_recipient = recipient
+    email_subject = subject
+
+    # Set up Jinja2 environment
+    env = Environment(loader=FileSystemLoader('.'))
+
+    # Load the template
+    template = env.get_template(template_file)
+
+    # Render the template with variables
+    rendered_template = template.render(variables)
+
+    # Create MIME object
+    message = MIMEMultipart("alternative")
+    message['From'] = email_sender
+    message['To'] = email_recipient
+    message['Subject'] = email_subject
+
+    # Attach HTML message
+    html_content = MIMEText(rendered_template, 'html')
+    message.attach(html_content)
+
+    # Configure SMTP connection
+    smtp_server = 'smtp.gmail.com'
+    smtp_port = 587
+    smtp_connection = smtplib.SMTP(smtp_server, smtp_port)
+    smtp_connection.starttls()
+
+    # Log in to Gmail account
+    smtp_connection.login(email_sender, password)
+
+    # Send the email
+    smtp_connection.sendmail(email_sender, email_recipient, message.as_string())
+
+    # Close the SMTP connection
+    smtp_connection.quit()

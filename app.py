@@ -5,7 +5,7 @@ from utils import *
 def run_web_server():
     from bottle import Bottle, template, TEMPLATE_PATH, request
     app = Bottle()
-    config = AppConfig()
+    config = init_configuration()
 
     @app.route('/')
     def index():
@@ -103,7 +103,7 @@ def main():
     import multiprocessing
     import traceback
 
-    AppConfig()
+    init_configuration()
     conf_logging()
     logger = logging.getLogger("app")
 
