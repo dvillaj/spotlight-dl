@@ -7,6 +7,7 @@ def run_web_server():
 
     app = Bottle()
     config = init_configuration()
+    conf_logging()
 
     @app.route('/')
     def index():
@@ -38,14 +39,26 @@ def run_web_server():
     def index():
         id_new = request.query.get('id').strip()
 
-        inserted_images = search_id_database(id_new)
-        text = f'{len(inserted_images)} new images has been uploaded'
+        inserted_images = search_new_id_database(id_new)
+        text = f'{len(inserted_images)} new image{"s" if len(inserted_images) != 1 else ""} has been inserted'
 
         return template_and_search_terms(text, inserted_images, f"/new?id={id_new}")
 
     @app.route('/upload')
     def index():
-        return template('upload.html')
+        return template('upload.html',
+                        title="Images uploading",
+                        accept_extension="zip",
+                        message="Select a zipped image file",
+                        callback="uploadFile")
+
+    @app.route('/insert')
+    def index():
+        return template('upload.html',
+                        title="Inserting images",
+                        accept_extension="jpg",
+                        message="Select a jpg image file",
+                        callback="insertImage")
 
     @app.route('/download')
     def index():
@@ -79,7 +92,9 @@ def run_web_server():
         logger = logging.getLogger("uploadFile")
         upload = request.files.get('filename')
         filename = upload.filename
-        if '.zip' in filename:
+
+        logger.info(f"Uploading {filename} ...")
+        if '.zip' in filename.lower():
             tmp_dir = tempfile.mkdtemp()
             logger.debug(f"Temp path: {tmp_dir}")
             file_path = os.path.join(tmp_dir, filename)
@@ -96,19 +111,53 @@ def run_web_server():
             error_message = 'The uploaded file is not a zip file!'
             return template('error.html', error_message=error_message)
 
-    @app.route('/image/<hash>')
-    def get_image(hash):
+    @app.route('/insertImage', method='POST')
+    def insert_image():
+        from bottle import request, redirect
+        import os
+        import tempfile
+        import traceback
+
+        logger = logging.getLogger("insertImage")
+        upload = request.files.get('filename')
+        filename = upload.filename
+
+        id_new = generate_id()
+
+        try:
+            if '.jpg' not in filename.lower():
+                raise Exception('The uploaded file is not a jpg file!')
+
+            tmp_dir = tempfile.mkdtemp()
+            logger.debug(f"Temp path: {tmp_dir}")
+            file_path = os.path.join(tmp_dir, filename)
+            upload.save(file_path)
+
+            logger.info(f"Inserting {file_path} with id {id_new}...")
+            insert_image_from_user(file_path, id_new)
+
+            delete_directory(tmp_dir)
+
+        except BaseException as e:
+            traceback.print_exc()
+            return template('error.html', error_message=e)
+
+        redirect(f'/new?id={id_new}')
+
+    @app.route('/image/<image_id>')
+    def get_image(image_id):
         import os
         from bottle import response
+        import traceback
 
         logger = logging.getLogger("image")
-        images = search_digest_database(hash)
+        images = search_digest_database(image_id)
 
         try:
             if len(images) == 0:
-                raise Exception("Image not found!")
+                raise Exception(f"Image {image_id} not found!")
 
-            image_path = images[0]['image_full_path']
+            image_path = get_full_path(images[0])
             logger.info(f"Reading image from {image_path} ...")
 
             if not os.path.isfile(image_path):
@@ -122,6 +171,7 @@ def run_web_server():
             return image_data
 
         except BaseException as e:
+            traceback.print_exc()
             return template('error.html', error_message=e)
 
     TEMPLATE_PATH.append('./templates')
@@ -153,13 +203,13 @@ def main():
         images = count_images_database()
 
         while True:
+            sleep()
             logger.info(f"Iteration {n} - Images {images} ...")
             for item in get_images_data():
                 if process_image(item):
                     images = images + 1
-                    send_new_image_email(item, images)
+                    send_notification(item, images)
 
-            sleep()
             n = n + 1
 
     except BaseException as e:

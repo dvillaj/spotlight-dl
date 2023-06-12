@@ -204,7 +204,6 @@ def conf_logging(config_file: str = 'logging.ini'):
 
 
 def join_lines(line1_arg, line2_arg):
-    # Join line1 and line2 descriptions
     line1 = line1_arg.strip()
     line2 = line2_arg.strip()
 
@@ -287,16 +286,25 @@ def download_image(image_json):
 
 def save_image(image_json):
     from PIL import Image
+    import logging
 
+    logger = logging.getLogger("save_image")
     make_image_directory(image_json)
 
+    image_full_path = get_full_path(image_json)
     image = Image.open(image_json['image_data'])
-    image.save(image_json['image_full_path'])
+    image.save(image_full_path)
+
+
+def make_directory(path):
+    import os
+
+    directory = os.path.dirname(path)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
 
 
 def make_image_directory(image_json):
-    import os
-
     dirs = image_json['title'].split(",")
     dirs.reverse()
     dirs = [s.strip() for s in dirs]
@@ -305,11 +313,18 @@ def make_image_directory(image_json):
     image_path = f"{dirs}/{image_json['hex_digest']}.jpg"
     full_name = f"{AppConfig.get_output_dir()}/{image_path}"
 
-    if not os.path.exists(os.path.dirname(full_name)):
-        os.makedirs(os.path.dirname(full_name))
+    make_directory(full_name)
 
     image_json['image_path'] = image_path
-    image_json['image_full_path'] = full_name
+
+
+def get_digest_from_file(imagen_path):
+    import hashlib
+    from PIL import Image
+
+    imagen = Image.open(imagen_path)
+    imagen_bytes = imagen.tobytes()
+    return hashlib.md5(imagen_bytes).hexdigest()
 
 
 def get_digest(image_json):
@@ -328,32 +343,52 @@ def get_description(image_json):
     return image_json['description']
 
 
+def get_url(image_json):
+    return image_json['image_url_landscape']
+
+
+def get_regular_images(database):
+    return [get_full_path(item) for item in database if item['title'] != "Inserted"]
+
+
+def remove_duplicates(database):
+    import os
+    import logging
+
+    logger = logging.getLogger("remove_duplicates")
+
+
+def get_full_path(image_json):
+    return f"{AppConfig.get_output_dir()}/{image_json['image_path']}"
+
+
 def clean_database():
     import logging
+
     logger = logging.getLogger("clean_database")
     database = read_images_database()
 
     logger.info(f"Cleaning {len(database)} items of {get_json_database_name()} database ...")
 
+    remove_duplicates(database)
     remove_database()
     delete_unknown_directory()
 
-    for json in database:
-        digest = get_digest(json)
-        title = get_title(json)
-        description = get_description(json)
+    for image_json in database:
+        digest = get_digest(image_json)
+        title = get_title(image_json)
+        description = get_description(image_json)
         for ad_text in AppConfig.get_ad():
             if ad_text in description:
                 logger.info(f"Clean description: {description} at {title} / {digest} image")
-                json['description'] = ""
+                image_json['description'] = ""
 
-        image_full_path = f"{AppConfig.get_output_dir()}/{json['image_path']}"
-
+        image_full_path = get_full_path(image_json)
         if not check_file_exists(image_full_path):
             logger.error(f"{image_full_path} DO NOT EXISTS!")
-            process_image(json)
+            process_image(image_json)
         else:
-            add_image_to_database(json)
+            add_image_to_database(image_json)
 
     insert_images_from_home()
     check_images_count()
@@ -367,33 +402,42 @@ def exists_image(json_image):
     digest = get_digest(json_image)
     image_title = get_title(json_image)
     image_description = get_description(json_image)
+    image_url = get_url(json_image)
+
     logger.debug(f"Searching for {digest} / {image_title} in {len(database)} images database ...")
 
-    for json in database:
-        database_digest = get_digest(json)
-        database_title = get_title(json)
-        database_description = get_description(json)
+    upgrade = False
+    for image_json in database:
+        database_digest = get_digest(image_json)
+        database_title = get_title(image_json)
+        database_description = get_description(image_json)
+        database_url = get_url(image_json)
         if database_digest == digest:
-            if (database_title == "Unknown" and database_title != image_title or
-                    database_description == "" and image_description != ""):
-                logger.info(f"Upgrading an image: {image_title} / {digest}")
+            flag_unknown = database_title == "Unknown" and database_title != image_title
+            flag_description = database_description == "" and image_description != ""
+            flag_url = database_url != image_url
+
+            if flag_unknown or flag_description or flag_url:
+                logger.info(f"Upgrading an image: {image_title}, digest: {digest}, Unknown: {flag_unknown}, Description: {flag_description}, Url: {flag_url}")
+                logger.info(f"image_url = {image_url} - database_url = {database_url}")
+                upgrade = True
             else:
                 logger.debug(f"Image {digest} found!")
-                return True
+                return True, False
 
     logger.debug(f"Image {image_title} / {digest} not found!")
-    return False
+    return False, not upgrade
 
 
 def tag_image(image_json):
     import exif
 
-    image_name = image_json['image_full_path']
+    image_name = get_full_path(image_json)
 
     with open(image_name, 'rb') as img_file:
         img = exif.Image(img_file)
 
-    img.image_description = image_json['description'].encode('ascii', 'ignore').decode()
+    img.image_description = image_json['title'].encode('ascii', 'ignore').decode()
     img.copyright = image_json['copyright'].encode('ascii', 'ignore').decode()
 
     with open(image_name, 'wb') as new_image_file:
@@ -429,18 +473,7 @@ def read_images_database(locationPath=None):
         with open(json_database, 'r') as archivo_jsonl:
             for line in archivo_jsonl:
                 json_line = json.loads(line)
-
-                if 'description' not in json_line:
-                    json_line['description'] = ""
-
-                if 'country' not in json_line:
-                    json_line['country'] = "Unknown"
-
-                if 'country_name' not in json_line:
-                    json_line['country_name'] = AppConfig.get_country_name(json_line['country'])
-
-                hex_digest = json_line['hex_digest']
-                images_json[hex_digest] = json_line
+                images_json[json_line['hex_digest']] = json_line
 
     return sorted([images_json[key] for key in images_json], reverse=True,
                   key=lambda x: datetime.strptime(x['timestamp'], '%Y-%m-%dT%H:%M:%S.%f'))
@@ -483,7 +516,7 @@ def add_image_to_database(image_json):
     if 'image_data' in image_json:
         del image_json['image_data']
 
-    if not 'timestamp' in image_json:
+    if 'timestamp' not in image_json:
         image_json['timestamp'] = get_now()
 
     with open(json_database, 'a') as file:
@@ -513,14 +546,14 @@ def setup_output_dir():
 
     output_dir = AppConfig.get_output_dir()
 
-    logger.info(f"Output dir: {output_dir}")
+    logger.debug(f"Output dir: {output_dir}")
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-        logger.info(f"Output dir created!")
+        logger.info(f"Database directory created!")
 
     os.system(f'chmod u+rwx {output_dir}')
-    logger.info("Output dir configured!")
+    logger.info("Database directory configured!")
 
 
 def copy_file(source_path, destination_path):
@@ -630,15 +663,16 @@ def process_image(image_json):
     logger = logging.getLogger("process_image")
     try:
         download_image(image_json)
-        if not exists_image(image_json):
+        exists, new = exists_image(image_json)
+        if not exists:
             delete_unknown_image(image_json)
             save_image(image_json)
             tag_image(image_json)
 
             add_image_to_database(image_json)
 
-            logger.info(f"Downloaded {image_json['title']} into {image_json['image_full_path']} ...")
-            return True
+            logger.info(f"Downloaded {image_json['title']} into {get_full_path(image_json)} ...")
+            return new
 
     except BaseException as error:
         logger.error(f"Error processing image {image_json['title']}: {error} ")
@@ -656,23 +690,28 @@ def insert_images_from_backup(backup_dir, id_new):
     logger.info(f"Backup Dir: {backup_dir}")
     images = read_images_database(backup_dir)
 
-    for image in images:
-        logger.debug(json.dumps(image, indent=3))
-        if not exists_image(image):
-            logger.info(f"Adding image: {image['title']}")
+    for json_image in images:
+        logger.debug(json.dumps(json_image, indent=3))
+        if not exists_image(json_image)[0]:
+            logger.info(f"Adding image: {json_image['title']}")
 
-            from_path = f"{backup_dir}/{image['image_path']}"
+            from_path = f"{backup_dir}/{json_image['image_path']}"
             if not check_file_exists(from_path):
-                logger.error(f"{from_path} DO NOT EXISTS: \n{json.dumps(image, indent=3)}")
-                process_image(image)
+                logger.error(f"{from_path} DO NOT EXISTS: \n{json.dumps(json_image, indent=3)}")
+                process_image(json_image)
 
             else:
-                make_image_directory(image)
+                make_image_directory(json_image)
 
-                copy_file(from_path, image['image_full_path'])
-                image['timestamp'] = get_now()
-                image['id-new'] = id_new
-                add_image_to_database(image)
+                full_image_path = get_full_path(json_image)
+                copy_file(from_path, full_image_path)
+                json_image['timestamp'] = get_now()
+                json_image['id-new'] = id_new
+
+                if 'image_full_path' in json_image:
+                    del json_image['image_full_path']
+
+                add_image_to_database(json_image)
 
 
 def get_file_count(directory):
@@ -774,7 +813,7 @@ def search_digest_database(search_term):
     return [item for item in images if search_term == item['hex_digest']]
 
 
-def search_id_database(search_term):
+def search_new_id_database(search_term):
     images = read_images_database()
     return [item for item in images if search_term in ("" if "id-new" not in item else item['id-new'])]
 
@@ -795,7 +834,7 @@ def get_mail_template(file):
     return f"templates/{file}.html"
 
 
-def send_new_image_email(image, actual_images):
+def send_notification(json_image, actual_images):
     import logging
 
     logger = logging.getLogger("send_new_image_email")
@@ -805,19 +844,19 @@ def send_new_image_email(image, actual_images):
     images = AppConfig.get_notification_images()
 
     if actual_images < images:
-        logger.info(f"No enough images to send an email {actual_images}/{images}!")
+        logger.info(f"No enough images to send a notification {actual_images}/{images}!")
         return
 
     subject = f"A new image has been downloaded from spotlight-dl"
     template = get_mail_template("new-imagen-mail")
 
-    image['time'] = get_time()
-    image['actual_images'] = actual_images
-    image['home_url'] = AppConfig.get_home_url()
+    json_image['time'] = get_time()
+    json_image['actual_images'] = actual_images
+    json_image['home_url'] = AppConfig.get_home_url()
 
     if passwd:
         logger.info(f"Sending a notification to {email} ...")
-        send_email(email, subject, template, image, email, passwd)
+        send_email(email, subject, template, json_image, email, passwd)
     else:
         logger.info("No password defined for notification, so no message will be send!")
 
@@ -891,7 +930,7 @@ def get_jpg_files(directory):
             if file.endswith(".jpg"):
                 file_path = os.path.join(root, file)
                 file_name = os.path.splitext(file)[0]
-                jpg_files.append((file_name.replace(".jpg", ""), file_path))
+                jpg_files.append((file_name.replace(".jpg", ""), file_path.replace("\\","/")))
 
     return jpg_files
 
@@ -906,14 +945,15 @@ def insert_images_from_home():
     images = 0
     for digest, image_path in get_jpg_files(AppConfig.get_output_dir()):
         if not search_digest_database(digest):
-
             image_path = image_path.replace("\\", "/")
             image_json = {'image_url_landscape': f"./image/{digest}", 'title': get_title_from_path(image_path), 'description': "",
                      'copyright': "", 'country': "UNKNOWN", 'country_name': AppConfig.get_country_name("UNKNOWN"),
                      'hex_digest': digest, 'image_path': image_path.replace(f"{AppConfig.get_output_dir()}/", ""),
-                     'image_full_path': image_path, 'timestamp': get_now()}
+                     'timestamp': get_now()}
 
             logger.debug(f"JSON = {image_json}")
+            logger.info(f"Found new image in home directory: {image_json['title']}, digest = {image_json['hex_digest']} ...")
+
             add_image_to_database(image_json)
             images = images + 1
 
@@ -933,12 +973,74 @@ def check_images_count():
     len_images = len(images)
 
     if len_images != len_images_from_disk:
-        logger.error(f"Images from disk ({len_images_from_disk}) are not equal than database ({len_images}) !!!")
-        if len_images_from_disk > len_images:
-            for digest, image_path in images_from_disk:
-                images_databases = search_digest_database(digest)
-                if not images_databases:
-                    logger.error(f"Image from disk not found in database: {image_path}")
+        logger.info(f"Images from disk ({len_images_from_disk}) are not equal than database ({len_images}):-(")
 
     else:
-        logger.info("Images from disk are equal than database :-)")
+        logger.info(f"Images from disk are equal than database ({len_images}) :-)")
+
+
+def insert_image_from_user(jpg_input_path, id_new):
+    import logging
+
+    logger = logging.getLogger("insert_image_from_user")
+
+    file_digest = get_digest_from_file(jpg_input_path)
+    logger.info(f"Inserting images from user - {file_digest}")
+    images = 0
+
+    if locate_image(jpg_input_path):
+        raise Exception("Image found in database!")
+
+    logger.info(f"Looks like is a new image!")
+
+    title = "Inserted"
+    database_path = f"{title}/{file_digest}.jpg"
+    full_database_path = f"{AppConfig.get_output_dir()}/{database_path}"
+    make_directory(full_database_path)
+    copy_file(jpg_input_path, full_database_path)
+
+    image_json = {'image_url_landscape': f"./image/{file_digest}", 'title': title, 'description': "",
+             'copyright': "", 'country': "UNKNOWN", 'country_name': AppConfig.get_country_name("UNKNOWN"),
+             'hex_digest': file_digest, 'image_path': database_path,
+             'timestamp': get_now(), "id-new": id_new}
+
+    logger.debug(f"JSON = {image_json}")
+    add_image_to_database(image_json)
+    images = images + 1
+
+    logger.info(f"{images} image has been inserted from home dir!")
+
+
+def get_image_array(image_path):
+    from PIL import Image
+    import numpy as np
+
+    image = Image.open(image_path)
+    resized_image1 = image.resize((256, 256))
+    gray_image = resized_image1.convert("L")
+    return np.array(gray_image)
+
+
+def compare_images(image1_array, image2_array):
+    from skimage.metrics import structural_similarity as compare_ssim
+
+    return compare_ssim(image1_array, image2_array) * 100
+
+
+def locate_image(image):
+    import logging
+
+    logger = logging.getLogger("locate_image")
+    logger.info(f"Comparing image {image} ...")
+
+    image1_array = get_image_array(image)
+
+    for hash, image_path in get_jpg_files(AppConfig.get_output_dir()):
+        image2_array = get_image_array(image_path)
+        prob = compare_images(image1_array, image2_array)
+        logger.debug(f"{image_path} is {prob}...")
+
+        if prob > 99:
+            return True
+
+    return False

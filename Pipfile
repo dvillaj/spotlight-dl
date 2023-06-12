@@ -10,8 +10,9 @@ requests = "*"
 pyyaml = "*"
 flask = "*"
 bottle = "*"
-opencv-python = "*"
 jinja2 = "*"
+pandas = "*"
+scikit-image = "*"
 
 [dev-packages]
 

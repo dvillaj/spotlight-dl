@@ -1,16 +1,16 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Images uploading</title>
+    <title>{{title}}</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/css/bootstrap.min.css">
 </head>
 <body>
     <div class="container">
-        <h1>Upload Images</h1>
-        <form action="/uploadFile" method="post" enctype="multipart/form-data" onsubmit="disableButton()">
+        <h1>{{title}}</h1>
+        <form action="/{{callback}}" method="post" enctype="multipart/form-data" onsubmit="disableButton()">
             <div class="mb-3">
-                <label for="fileid" class="form-label">Select a zipped image file:</label>
-                <input type="file" name="filename" id="fileid" class="form-control" accept=".zip" required>
+                <label for="fileid" class="form-label">{{message}}}:</label>
+                <input type="file" name="filename" id="fileid" class="form-control" accept=".{{accept_extension}}" required>
             </div>
             <div class="d-flex">
                 <button id="uploadBtn" type="submit" class="btn btn-primary me-2">Upload</button>
