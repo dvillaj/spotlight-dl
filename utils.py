@@ -14,18 +14,11 @@ class AppConfig:
 
     @staticmethod
     def get_port():
-        return AppConfig.config['general']['port']
+        return AppConfig.get_configuration_item('general', 'port')
 
     @staticmethod
     def get_home_url():
-        import os
-
-        env_url = os.getenv('HOME_URL')
-        if env_url:
-            url = env_url.strip()
-        else:
-            url = AppConfig.config['general']['url'].strip()
-
+        url = AppConfig.get_configuration_item('general', 'home.url').strip()
         if not url.endswith("/"):
             return url + "/"
         else:
@@ -35,8 +28,8 @@ class AppConfig:
     def get_spotlight_url(country):
         from datetime import datetime
 
-        url = AppConfig.config['spotlight']['url']
-        pid = AppConfig.config['spotlight']['pid']
+        url = AppConfig.get_configuration_item('spotlight', 'url')
+        pid = AppConfig.get_configuration_item('spotlight', 'pid', AppConfig.get_random_pid())
         language = AppConfig.get_language()
 
         return (url
@@ -56,22 +49,7 @@ class AppConfig:
 
     @staticmethod
     def get_country():
-        import os
-
-        try:
-            env_country = os.getenv('COUNTRY')
-            if env_country:
-                country = env_country.upper()
-            else:
-                country = AppConfig.config['spotlight']['country'].upper()
-
-            if country == "RANDOM":
-                return AppConfig.get_random_country()
-            else:
-                return country
-
-        except KeyError:
-            return AppConfig.get_random_country()
+        return AppConfig.get_configuration_item('spotlight', 'country', AppConfig.get_random_country()).upper()
 
     @staticmethod
     def get_random_country():
@@ -80,94 +58,52 @@ class AppConfig:
         return random.choice(country_keys)
 
     @staticmethod
-    def get_notification_images():
-        import os
-
-        env_images = os.getenv('NOTIFICATION_IMAGES')
-        if env_images:
-            return int(env_images)
-        else:
-            return AppConfig.config['notification']['images']
+    def get_notification_email_images():
+        return int(AppConfig.get_configuration_item('notification.email', 'images', 0))
 
     @staticmethod
-    def get_notification_email():
-        import os
-
-        env_email = os.getenv('NOTIFICATION_EMAIL')
-        if env_email:
-            return env_email
-        else:
-            try:
-                return AppConfig.config['notification']['email']
-            except:
-                return ""
+    def get_notification_email_sender():
+        return AppConfig.get_configuration_item('notification.email', 'sender', "")
 
     @staticmethod
-    def get_notification_password():
-        import os
+    def get_notification_email_password():
+        return AppConfig.get_configuration_item('notification.email', 'password', "")
 
-        env_password = os.getenv('NOTIFICATION_PASSWORD')
-        if env_password:
-            return env_password
-        else:
-            try:
-                return AppConfig.config['notification']['password']
-            except:
-                return ""
+    @staticmethod
+    def get_notification_telegram_images():
+        return int(AppConfig.get_configuration_item('notification.telegram', 'images', 0))
+
+    @staticmethod
+    def get_notification_telegram_token():
+        return AppConfig.get_configuration_item('notification.telegram', 'token', "")
+
+    @staticmethod
+    def get_notification_telegram_chat_id():
+        return AppConfig.get_configuration_item('notification.telegram', 'chatId', "")
 
     @staticmethod
     def get_language():
-        import os
-
-        env_language = os.getenv('LANGUAGE')
-        if env_language:
-            return env_language
-        else:
-            return AppConfig.config['spotlight']['language']
+        return AppConfig.get_configuration_item('spotlight', 'language')
 
     @staticmethod
     def get_images_per_page():
-        import os
-
-        env_images = os.getenv('IMAGES_PER_PAGE')
-        if env_images:
-            return int(env_images)
-        else:
-            return AppConfig.config['general']['imagesPerPage']
+        return int(AppConfig.get_configuration_item('general', 'imagesPerPage'))
 
     @staticmethod
     def get_json_filename():
-        return AppConfig.config['general']['json.filename']
+        return AppConfig.get_configuration_item('general', 'json.filename')
 
     @staticmethod
     def get_output_dir():
-        import os
-
-        output_dir = os.getenv('OUTPUT_DIR')
-        if output_dir:
-            return output_dir
-        else:
-            return AppConfig.config['general']['output.dir']
+        return AppConfig.get_configuration_item('general', 'output.dir')
 
     @staticmethod
     def get_sleep_time():
-        import os
-
-        sleep_time = os.getenv('SLEEP_TIME')
-        if sleep_time:
-            return int(sleep_time)
-        else:
-            return int(AppConfig.config['general']['sleep.time'])
+        return int(AppConfig.get_configuration_item('general', 'sleep.time'))
 
     @staticmethod
     def get_initial_sleep():
-        import os
-
-        sleep_time = os.getenv('INITIAL_SLEEP')
-        if sleep_time:
-            return int(sleep_time)
-        else:
-            return int(AppConfig.config['general']['initial.sleep.time'])
+        return int(AppConfig.get_configuration_item('general', 'initial.sleep.time'))
 
     @staticmethod
     def get_countries():
@@ -175,6 +111,30 @@ class AppConfig:
         with open("data/countries.json", "r", encoding="utf-8") as file:
             data = json.load(file)
         return data
+
+    @staticmethod
+    def get_configuration_item(section, item, default_value = None):
+        import os
+
+        value = os.getenv(f"SPOTLIGHTDL_{section}.{item}".replace('.','_').upper())
+        if not value:
+            try:
+                value = AppConfig.config[section][item]
+            except:
+                if default_value is not None:
+                    return f"{default_value}"
+                else:
+                    raise ValueError(f"Error reading configuration: Item '{item}' from section '{section}' not found!")
+
+        return value
+
+    @staticmethod
+    def get_random_pid(lower_bound = 200000, upper_bound = 209999):
+        import random
+        import time
+
+        random.seed(int(time.time()))
+        return random.randint(lower_bound, upper_bound)
 
 
 def check_file_exists(file: str) -> bool:
@@ -720,7 +680,7 @@ def get_links(grouped_terms=[]):
     return sorted(subdirectories, key=lambda x: (x[1], x[2]), reverse=True)
 
 
-def template_and_search_terms(text, image_list, href):
+def template_and_search_terms(startup_time, text, image_list, href):
     from bottle import template, request
     import math
 
@@ -760,6 +720,7 @@ def template_and_search_terms(text, image_list, href):
                     ellipsis_before=ellipsis_before,
                     ellipsis_after=ellipsis_after,
                     base_url=base_url,
+                    seconds=get_uptime_message(startup_time),
                     href=href)
 
 
@@ -795,31 +756,79 @@ def get_mail_template(file):
     return f"templates/{file}.html"
 
 
-def send_new_image_email(image, actual_images):
+def get_markdown_template(file):
+    return f"templates/{file}.md"
+
+
+def send_new_image_email_notification(image, actual_images):
     import logging
 
-    logger = logging.getLogger("send_new_image_email")
+    logger = logging.getLogger("send_new_image_email_notification")
 
-    email = AppConfig.get_notification_email()
-    passwd = AppConfig.get_notification_password()
-    images = AppConfig.get_notification_images()
+    sender = AppConfig.get_notification_email_sender()
+    passwd = AppConfig.get_notification_email_password()
+    images = AppConfig.get_notification_email_images()
+
+    if images == 0:
+        return
 
     if actual_images < images:
-        logger.info(f"No enough images to send an email {actual_images}/{images}!")
+        logger.info(f"No enough images to send an email notification {actual_images}/{images}!")
+        return
+
+    if not passwd:
+        logger.info("No password defined for email notification, so no message will be send!")
+        return
+
+    if not sender:
+        logger.info("No sender defined for email notification, so no message will be send!")
         return
 
     subject = f"A new image has been downloaded from spotlight-dl"
-    template = get_mail_template("new-imagen-mail")
+    notification_template = get_mail_template("new-imagen-mail")
 
     image['time'] = get_time()
     image['actual_images'] = actual_images
     image['home_url'] = AppConfig.get_home_url()
 
-    if passwd:
-        logger.info(f"Sending a notification to {email} ...")
-        send_email(email, subject, template, image, email, passwd)
-    else:
-        logger.info("No password defined for notification, so no message will be send!")
+    logger.info(f"Sending a notification to {sender} ...")
+    template = get_notification_template(notification_template, image)
+    send_email(sender, subject, template, sender, passwd)
+
+
+def send_new_image_telegram_notification(image, actual_images):
+    import logging
+
+    logger = logging.getLogger("send_new_image_telegram_notification")
+
+    images = AppConfig.get_notification_telegram_images()
+    token = AppConfig.get_notification_telegram_token()
+    chat_id = AppConfig.get_notification_telegram_chat_id()
+
+    if images == 0:
+        return
+
+    if actual_images < images:
+        logger.info(f"No enough images to send a telegram notification {actual_images}/{images}!")
+        return
+
+    if not token:
+        logger.info("No token defined for telegram notification, so no message will be send!")
+        return
+
+    if not chat_id:
+        logger.info("No chat_id defined for telegram notification, so no message will be send!")
+        return
+
+    notification_template = get_markdown_template("new-imagen-telegram")
+
+    image['time'] = get_time()
+    image['actual_images'] = actual_images
+    image['home_url'] = AppConfig.get_home_url()
+
+    logger.info(f"Sending a telegram notification ...")
+    template = get_notification_template(notification_template, image)
+    send_telegram(chat_id, token, template)
 
 
 def get_time():
@@ -828,16 +837,8 @@ def get_time():
     return datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
 
-def send_email(recipient, subject, template_file, variables, sender, password):
-    import smtplib
-    from email.mime.multipart import MIMEMultipart
-    from email.mime.text import MIMEText
+def get_notification_template(template_file, variables):
     from jinja2 import Environment, FileSystemLoader
-
-    # Set up email parameters
-    email_sender = sender
-    email_recipient = recipient
-    email_subject = subject
 
     # Set up Jinja2 environment
     env = Environment(loader=FileSystemLoader('.'))
@@ -846,7 +847,18 @@ def send_email(recipient, subject, template_file, variables, sender, password):
     template = env.get_template(template_file)
 
     # Render the template with variables
-    rendered_template = template.render(variables)
+    return template.render(variables)
+
+
+def send_email(recipient, subject, template, sender, password):
+    import smtplib
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+
+    # Set up email parameters
+    email_sender = sender
+    email_recipient = recipient
+    email_subject = subject
 
     # Create MIME object
     message = MIMEMultipart("alternative")
@@ -855,7 +867,7 @@ def send_email(recipient, subject, template_file, variables, sender, password):
     message['Subject'] = email_subject
 
     # Attach HTML message
-    html_content = MIMEText(rendered_template, 'html')
+    html_content = MIMEText(template, 'html')
     message.attach(html_content)
 
     # Configure SMTP connection
@@ -872,6 +884,26 @@ def send_email(recipient, subject, template_file, variables, sender, password):
 
     # Close the SMTP connection
     smtp_connection.quit()
+
+
+def send_telegram(chat_id, token, message):
+    import requests
+    import logging
+
+    logger = logging.getLogger("send_telegram")
+
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    payload = {
+        "chat_id": chat_id,
+        "text": message,
+        "parse_mode": "Markdown"
+    }
+    response = requests.post(url, data=payload)
+
+    if response.status_code == 200:
+        logger.info("Telegram notification send!")
+    else:
+        logger.error(f"Error sending Telegram notification: {response.content}")
 
 
 def get_title_from_path(path):
@@ -906,12 +938,12 @@ def insert_images_from_home():
     images = 0
     for digest, image_path in get_jpg_files(AppConfig.get_output_dir()):
         if not search_digest_database(digest):
-
             image_path = image_path.replace("\\", "/")
-            image_json = {'image_url_landscape': f"./image/{digest}", 'title': get_title_from_path(image_path), 'description': "",
-                     'copyright': "", 'country': "UNKNOWN", 'country_name': AppConfig.get_country_name("UNKNOWN"),
-                     'hex_digest': digest, 'image_path': image_path.replace(f"{AppConfig.get_output_dir()}/", ""),
-                     'image_full_path': image_path, 'timestamp': get_now()}
+            image_json = {'image_url_landscape': f"./image/{digest}", 'title': get_title_from_path(image_path),
+                          'description': "",
+                          'copyright': "", 'country': "UNKNOWN", 'country_name': AppConfig.get_country_name("UNKNOWN"),
+                          'hex_digest': digest, 'image_path': image_path.replace(f"{AppConfig.get_output_dir()}/", ""),
+                          'image_full_path': image_path, 'timestamp': get_now()}
 
             logger.debug(f"JSON = {image_json}")
             add_image_to_database(image_json)
@@ -942,3 +974,40 @@ def check_images_count():
 
     else:
         logger.info("Images from disk are equal than database :-)")
+
+
+def get_current_time():
+    from datetime import datetime
+
+    return datetime.now()
+
+
+def get_uptime_message(start_time):
+    from datetime import datetime
+
+    current_seconds = int((datetime.now() - start_time).total_seconds())
+
+    days = current_seconds // 86400
+    current_seconds %= 86400
+
+    hours = current_seconds // 3600
+    current_seconds %= 3600
+
+    minutes = current_seconds // 60
+    seconds = current_seconds % 60
+
+    message = ""
+
+    if days > 0:
+        message = f"{days} day" if days == 1 else f"{days} days"
+
+    if hours > 0:
+        message = f"{message} {hours} hour" if hours == 1 else f"{message} {hours} hours"
+
+    if minutes > 0 and days == 0:
+        message = f"{message} {minutes} minute" if minutes == 1 else f"{message} {minutes} minutes"
+
+    if seconds > 0 and days == 0 and hours == 0:
+        message = f"{message} {seconds} second" if seconds == 1 else f"{message} {seconds} seconds"
+
+    return message

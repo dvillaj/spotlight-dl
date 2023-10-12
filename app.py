@@ -8,10 +8,12 @@ def run_web_server():
     app = Bottle()
     config = init_configuration()
 
+    startup_time = get_current_time()
+
     @app.route('/')
     def index():
         images = read_images_database()
-        return template_and_search_terms("Latest downloaded images", images, "/")
+        return template_and_search_terms(startup_time, "Latest downloaded images", images, "/")
 
     @app.route('/search')
     def search():
@@ -23,7 +25,7 @@ def run_web_server():
         len_images = len(image_list)
         text = f"{len_images} {'images' if len_images != 1 else 'image'} found with '{search_term}' term"
 
-        return template_and_search_terms(text, image_list, f"/search?search-term={quote(search_term)}")
+        return template_and_search_terms(startup_time, text, image_list, f"/search?search-term={quote(search_term)}")
 
     @app.route('/random')
     def index():
@@ -32,7 +34,7 @@ def run_web_server():
         images = read_images_database()
         nmax = min(config.get_images_per_page(), len(images))
 
-        return template_and_search_terms("Some random images", sample(images, nmax), "/random")
+        return template_and_search_terms(startup_time, "Some random images", sample(images, nmax), "/random")
 
     @app.route('/new')
     def index():
@@ -41,7 +43,7 @@ def run_web_server():
         inserted_images = search_id_database(id_new)
         text = f'{len(inserted_images)} new images has been uploaded'
 
-        return template_and_search_terms(text, inserted_images, f"/new?id={id_new}")
+        return template_and_search_terms(startup_time, text, inserted_images, f"/new?id={id_new}")
 
     @app.route('/upload')
     def index():
@@ -157,7 +159,8 @@ def main():
             for item in get_images_data():
                 if process_image(item):
                     images = images + 1
-                    send_new_image_email(item, images)
+                    send_new_image_email_notification(item, images)
+                    send_new_image_telegram_notification(item, images)
 
             sleep()
             n = n + 1
