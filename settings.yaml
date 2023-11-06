@@ -6,8 +6,8 @@ spotlight:
 general:
   home.url: http://localhost:8000
   port: 8000
-  output.dir: c:/tmp/images
-  sleep.time: 3
+  output.dir: /tmp/images
+  sleep.time: 0
   initial.sleep.time: 0
   imagesPerPage: 10
   json.filename: images_database.jsonl
